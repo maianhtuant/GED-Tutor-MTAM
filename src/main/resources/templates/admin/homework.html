@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Manage Homework')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <div class="page-head">
+        <h1>Homework</h1>
+        <a th:href="@{/admin/homework/new}" class="btn btn-primary">+ New homework</a>
+    </div>
+
+    <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+
+    <table class="table">
+        <thead>
+        <tr><th>Title</th><th>Subject</th><th>Due</th><th>Published</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="hw : ${homeworkList}">
+            <td th:text="${hw.title}">Title</td>
+            <td th:text="${hw.subject}">MATH</td>
+            <td th:text="${hw.dueDate != null ? #temporals.format(hw.dueDate,'MMM d, yyyy HH:mm') : '—'}">—</td>
+            <td th:text="${hw.published ? 'Yes' : 'No'}">Yes</td>
+            <td>
+                <a th:href="@{|/admin/homework/${hw.id}/edit|}" class="btn">Edit</a>
+                <a th:href="@{|/admin/homework/${hw.id}/submissions|}" class="btn">Submissions</a>
+                <form th:action="@{|/admin/homework/${hw.id}/delete|}" method="post" style="display:inline"
+                      onsubmit="return confirm('Delete this homework?');">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

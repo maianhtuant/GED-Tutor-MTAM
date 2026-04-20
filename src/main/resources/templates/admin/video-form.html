@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Video form')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container narrow">
+    <a th:href="@{/admin/videos}" class="back-link">&larr; Back to videos</a>
+    <h1 th:text="${form.id != null ? 'Edit video' : 'New video'}">Video</h1>
+
+    <form th:action="${form.id != null} ? @{|/admin/videos/${form.id}/edit|} : @{/admin/videos/new}"
+          th:object="${form}" method="post" class="card">
+
+        <label>Title
+            <input type="text" th:field="*{title}" required>
+            <span class="field-error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></span>
+        </label>
+
+        <label>Video URL (YouTube or Vimeo)
+            <input type="url" th:field="*{videoUrl}" required
+                   placeholder="https://www.youtube.com/watch?v=...">
+            <span class="field-error" th:if="${#fields.hasErrors('videoUrl')}" th:errors="*{videoUrl}"></span>
+        </label>
+
+        <label>Description
+            <textarea th:field="*{description}" rows="5"></textarea>
+        </label>
+
+        <label>Subject
+            <select th:field="*{subject}" required>
+                <option th:each="s : ${subjects}" th:value="${s}" th:text="${s}"></option>
+            </select>
+        </label>
+
+        <label>Visibility
+            <select th:field="*{visibility}" required>
+                <option th:each="vis : ${visibilities}" th:value="${vis}" th:text="${vis}"></option>
+            </select>
+        </label>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

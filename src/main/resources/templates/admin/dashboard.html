@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Admin Dashboard')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <h1>Admin Dashboard</h1>
+    <div class="stats">
+        <div class="stat">
+            <h2 th:text="${videoCount}">0</h2>
+            <p>Videos</p>
+            <a th:href="@{/admin/videos}">Manage &rarr;</a>
+        </div>
+        <div class="stat">
+            <h2 th:text="${userCount}">0</h2>
+            <p>Users</p>
+            <a th:href="@{/admin/users}">Manage &rarr;</a>
+        </div>
+        <div class="stat">
+            <h2 th:text="${homeworkCount}">0</h2>
+            <p>Homework</p>
+            <a th:href="@{/admin/homework}">Manage &rarr;</a>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

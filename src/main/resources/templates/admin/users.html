@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Manage Users')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <h1>Users</h1>
+    <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+
+    <table class="table">
+        <thead>
+        <tr><th>Username</th><th>Email</th><th>Full name</th><th>Role</th><th>Enabled</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="u : ${users}">
+            <td th:text="${u.username}">user</td>
+            <td th:text="${u.email}">a@b.com</td>
+            <td th:text="${u.fullName}">Name</td>
+            <td>
+                <form th:action="@{|/admin/users/${u.id}/role|}" method="post" style="display:inline">
+                    <select name="role" onchange="this.form.submit()">
+                        <option th:each="r : ${roles}"
+                                th:value="${r}"
+                                th:text="${r}"
+                                th:selected="${u.role == r}"></option>
+                    </select>
+                </form>
+            </td>
+            <td>
+                <form th:action="@{|/admin/users/${u.id}/enabled|}" method="post" style="display:inline">
+                    <input type="hidden" name="enabled" th:value="${!u.enabled}">
+                    <button type="submit" class="link-btn"
+                            th:text="${u.enabled ? 'Disable' : 'Enable'}">Disable</button>
+                </form>
+                <span class="badge" th:classappend="${u.enabled ? 'badge-success' : 'badge-muted'}"
+                      th:text="${u.enabled ? 'Active' : 'Disabled'}">Active</span>
+            </td>
+            <td>
+                <form th:action="@{|/admin/users/${u.id}/reset-password|}" method="post" style="display:inline">
+                    <input type="password" name="newPassword" placeholder="New password" required minlength="6" style="width:140px">
+                    <button type="submit" class="btn">Reset PW</button>
+                </form>
+                <form th:action="@{|/admin/users/${u.id}/delete|}" method="post" style="display:inline"
+                      onsubmit="return confirm('Delete this user?');">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

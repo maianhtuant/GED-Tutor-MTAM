@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Video Lessons')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <h1>Video Lessons</h1>
+
+    <div class="alert alert-error" th:if="${error}" th:text="${error}"></div>
+
+    <form method="get" th:action="@{/videos}" class="filter-bar">
+        <label>Subject:
+            <select name="subject" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option th:each="s : ${subjects}"
+                        th:value="${s}"
+                        th:text="${s}"
+                        th:selected="${selectedSubject != null and selectedSubject == s}"></option>
+            </select>
+        </label>
+    </form>
+
+    <div th:if="${#lists.isEmpty(videos)}" class="empty">No videos yet. Check back soon!</div>
+
+    <div class="grid">
+        <a th:each="v : ${videos}" th:href="@{|/videos/${v.id}|}" class="video-card">
+            <div class="thumb"
+                 th:if="${v.provider == 'youtube' and v.embedId != null}"
+                 th:style="|background-image: url('https://img.youtube.com/vi/${v.embedId}/hqdefault.jpg')|"></div>
+            <div class="thumb" th:unless="${v.provider == 'youtube' and v.embedId != null}">
+                <span>Watch</span>
+            </div>
+            <div class="card-body">
+                <span class="badge" th:text="${v.subject}">MATH</span>
+                <h3 th:text="${v.title}">Title</h3>
+                <p class="muted" th:text="${#temporals.format(v.createdAt, 'MMM d, yyyy')}">Date</p>
+            </div>
+        </a>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

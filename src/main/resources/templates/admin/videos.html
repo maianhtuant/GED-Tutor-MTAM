@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Manage Videos')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <div class="page-head">
+        <h1>Videos</h1>
+        <a th:href="@{/admin/videos/new}" class="btn btn-primary">+ New video</a>
+    </div>
+
+    <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+
+    <table class="table">
+        <thead>
+        <tr><th>Title</th><th>Subject</th><th>Visibility</th><th>Provider</th><th>Created</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+        <tr th:each="v : ${videos}">
+            <td>
+                <a th:href="@{|/admin/videos/${v.id}/edit|}" th:text="${v.title}">Title</a>
+            </td>
+            <td th:text="${v.subject}">MATH</td>
+            <td>
+                <form th:action="@{|/admin/videos/${v.id}/visibility|}" method="post" style="display:inline">
+                    <select name="visibility" onchange="this.form.submit()">
+                        <option value="PUBLIC"  th:selected="${v.visibility.name() == 'PUBLIC'}">Public</option>
+                        <option value="PRIVATE" th:selected="${v.visibility.name() == 'PRIVATE'}">Private</option>
+                        <option value="DRAFT"   th:selected="${v.visibility.name() == 'DRAFT'}">Draft</option>
+                    </select>
+                </form>
+            </td>
+            <td th:text="${v.provider}">youtube</td>
+            <td th:text="${#temporals.format(v.createdAt,'MMM d, yyyy')}">date</td>
+            <td>
+                <a th:href="@{|/admin/videos/${v.id}/edit|}" class="btn">Edit</a>
+                <form th:action="@{|/admin/videos/${v.id}/delete|}" method="post" style="display:inline"
+                      onsubmit="return confirm('Delete this video?');">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

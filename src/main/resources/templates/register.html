@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Create account')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container narrow">
+    <h1>Create your account</h1>
+    <div class="alert alert-error" th:if="${error}" th:text="${error}"></div>
+
+    <form th:action="@{/register}" th:object="${registrationDto}" method="post" class="card">
+        <label>Username
+            <input type="text" th:field="*{username}" required>
+            <span class="field-error" th:if="${#fields.hasErrors('username')}" th:errors="*{username}"></span>
+        </label>
+        <label>Email
+            <input type="email" th:field="*{email}" required>
+            <span class="field-error" th:if="${#fields.hasErrors('email')}" th:errors="*{email}"></span>
+        </label>
+        <label>Full name
+            <input type="text" th:field="*{fullName}">
+        </label>
+        <label>Password
+            <input type="password" th:field="*{password}" required>
+            <span class="field-error" th:if="${#fields.hasErrors('password')}" th:errors="*{password}"></span>
+        </label>
+        <label>Confirm password
+            <input type="password" th:field="*{confirmPassword}" required>
+        </label>
+        <button type="submit" class="btn btn-primary">Sign up</button>
+    </form>
+    <p>Already have an account? <a th:href="@{/login}">Log in</a>.</p>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

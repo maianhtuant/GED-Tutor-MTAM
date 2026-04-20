@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${video.title})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <a th:href="@{/videos}" class="back-link">&larr; All videos</a>
+    <h1 th:text="${video.title}">Video Title</h1>
+    <p><span class="badge" th:text="${video.subject}">MATH</span></p>
+
+    <div class="video-frame" th:if="${embedUrl != null}">
+        <iframe th:src="${embedUrl}"
+                frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen></iframe>
+    </div>
+
+    <div class="alert alert-error" th:if="${embedUrl == null}">
+        Unable to embed this video. <a th:href="${video.videoUrl}" target="_blank">Open it on the source site</a>.
+    </div>
+
+    <section class="description">
+        <h3>About this lesson</h3>
+        <p th:text="${video.description}" th:if="${video.description}">description</p>
+        <p class="muted" th:unless="${video.description}">No description provided.</p>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

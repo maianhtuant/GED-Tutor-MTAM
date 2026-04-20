@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Homework form')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container narrow">
+    <a th:href="@{/admin/homework}" class="back-link">&larr; Back</a>
+    <h1 th:text="${form.id != null ? 'Edit homework' : 'New homework'}">Homework</h1>
+
+    <form th:action="${form.id != null} ? @{|/admin/homework/${form.id}/edit|} : @{/admin/homework/new}"
+          th:object="${form}" method="post" class="card">
+
+        <label>Title
+            <input type="text" th:field="*{title}" required>
+        </label>
+
+        <label>Subject
+            <select th:field="*{subject}" required>
+                <option th:each="s : ${subjects}" th:value="${s}" th:text="${s}"></option>
+            </select>
+        </label>
+
+        <label>Related video (optional)
+            <select th:field="*{videoId}">
+                <option value="">— none —</option>
+                <option th:each="v : ${videos}" th:value="${v.id}" th:text="${v.title}"></option>
+            </select>
+        </label>
+
+        <label>Due date (optional)
+            <input type="datetime-local" th:field="*{dueDate}">
+        </label>
+
+        <label>Instructions
+            <textarea th:field="*{instructions}" rows="8"></textarea>
+        </label>
+
+        <label class="inline">
+            <input type="checkbox" th:field="*{published}">
+            Published (visible to students)
+        </label>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

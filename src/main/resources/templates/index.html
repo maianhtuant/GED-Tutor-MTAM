@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('GED Tutor - Home')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container hero">
+    <h1>Pass Your GED with Confidence</h1>
+    <p class="lead">Watch bite-sized video lessons across Math, Science, Social Studies, and Language Arts, then practice with homework assignments.</p>
+    <div class="cta">
+        <a th:href="@{/videos}" class="btn btn-primary">Browse Videos</a>
+        <a th:href="@{/register}" class="btn">Create a free account</a>
+    </div>
+
+    <section class="subjects">
+        <div class="subject-card"><h3>Math</h3><p>Algebra, geometry, data analysis.</p></div>
+        <div class="subject-card"><h3>Science</h3><p>Life, physical &amp; earth science.</p></div>
+        <div class="subject-card"><h3>Social Studies</h3><p>US history, civics, geography.</p></div>
+        <div class="subject-card"><h3>Language Arts</h3><p>Reading, writing, grammar.</p></div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

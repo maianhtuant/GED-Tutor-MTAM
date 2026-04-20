@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${hw.title})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <a th:href="@{/homework}" class="back-link">&larr; All homework</a>
+    <h1 th:text="${hw.title}">Homework title</h1>
+    <p>
+        <span class="badge" th:text="${hw.subject}">MATH</span>
+        <span th:if="${hw.dueDate}">Due <b th:text="${#temporals.format(hw.dueDate,'MMM d, yyyy HH:mm')}">Date</b></span>
+    </p>
+
+    <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+
+    <section class="card">
+        <h3>Instructions</h3>
+        <p th:text="${hw.instructions}" th:if="${hw.instructions}">Instructions</p>
+        <p class="muted" th:unless="${hw.instructions}">No additional instructions.</p>
+
+        <p th:if="${hw.video}">
+            Related lesson:
+            <a th:href="@{|/videos/${hw.video.id}|}" th:text="${hw.video.title}">Watch</a>
+        </p>
+    </section>
+
+    <section class="card" th:if="${submission != null and submission.grade != null}">
+        <h3>Graded</h3>
+        <p>Grade: <b th:text="${submission.grade}">0</b></p>
+        <p th:if="${submission.feedback}"><em>Feedback:</em> <span th:text="${submission.feedback}"></span></p>
+    </section>
+
+    <section class="card">
+        <h3 th:text="${submission != null ? 'Your answer' : 'Submit your answer'}">Submit</h3>
+        <form th:action="@{|/homework/${hw.id}/submit|}" method="post">
+            <textarea name="answer" rows="10" required
+                      th:text="${submission != null ? submission.answer : ''}"></textarea>
+            <button type="submit" class="btn btn-primary"
+                    th:text="${submission != null ? 'Resubmit' : 'Submit'}">Submit</button>
+        </form>
+    </section>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

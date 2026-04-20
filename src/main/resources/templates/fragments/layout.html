@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title th:text="${title} ?: 'GED Tutor'">GED Tutor</title>
+    <link rel="stylesheet" th:href="@{/css/styles.css}">
+</head>
+<body>
+
+<nav th:fragment="nav" class="navbar">
+    <a th:href="@{/}" class="brand">GED Tutor</a>
+    <div class="nav-links">
+        <a th:href="@{/videos}">Videos</a>
+        <a th:href="@{/homework}" sec:authorize="isAuthenticated()">Homework</a>
+        <a th:href="@{/admin}" sec:authorize="hasRole('ADMIN')">Admin</a>
+    </div>
+    <div class="nav-auth">
+        <span sec:authorize="isAuthenticated()">
+            Hi, <b sec:authentication="name">user</b>
+            <form th:action="@{/logout}" method="post" style="display:inline">
+                <button type="submit" class="link-btn">Logout</button>
+            </form>
+        </span>
+        <span sec:authorize="!isAuthenticated()">
+            <a th:href="@{/login}">Login</a>
+            <a th:href="@{/register}" class="btn btn-primary">Sign up</a>
+        </span>
+    </div>
+</nav>
+
+<footer th:fragment="footer" class="footer">
+    <p>&copy; GED Tutor &mdash; study for your GED with video lessons &amp; homework.</p>
+</footer>
+
+</body>
+</html>

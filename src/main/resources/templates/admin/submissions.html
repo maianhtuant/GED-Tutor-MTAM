@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Submissions')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <a th:href="@{/admin/homework}" class="back-link">&larr; Back</a>
+    <h1>Submissions: <span th:text="${hw.title}">HW</span></h1>
+
+    <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+
+    <div th:if="${#lists.isEmpty(submissions)}" class="empty">No submissions yet.</div>
+
+    <div th:each="sub : ${submissions}" class="card">
+        <h3>
+            <span th:text="${sub.student.username}">user</span>
+            <small class="muted" th:text="'— submitted ' + ${#temporals.format(sub.submittedAt,'MMM d, yyyy HH:mm')}"></small>
+        </h3>
+        <pre class="answer" th:text="${sub.answer}">answer</pre>
+
+        <form th:action="@{|/admin/submissions/${sub.id}/grade|}" method="post">
+            <input type="hidden" name="homeworkId" th:value="${hw.id}">
+            <label>Grade (0-100)
+                <input type="number" name="grade" min="0" max="100" th:value="${sub.grade}">
+            </label>
+            <label>Feedback
+                <textarea name="feedback" rows="3" th:text="${sub.feedback}"></textarea>
+            </label>
+            <button type="submit" class="btn btn-primary">Save grade</button>
+        </form>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
