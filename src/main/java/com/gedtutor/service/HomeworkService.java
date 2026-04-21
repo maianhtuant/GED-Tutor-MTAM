@@ -8,9 +8,11 @@ import com.gedtutor.model.QuizAttempt;
 import com.gedtutor.model.Subject;
 import com.gedtutor.model.User;
 import com.gedtutor.model.Video;
+import com.gedtutor.model.QuizAnswer;
 import com.gedtutor.repository.HomeworkRepository;
 import com.gedtutor.repository.HomeworkSubmissionRepository;
 import com.gedtutor.repository.QuestionRepository;
+import com.gedtutor.repository.QuizAnswerRepository;
 import com.gedtutor.repository.QuizAttemptRepository;
 import com.gedtutor.repository.VideoRepository;
 import org.springframework.stereotype.Service;
@@ -31,19 +33,22 @@ public class HomeworkService {
     private final SubjectService subjectService;
     private final QuestionRepository questionRepository;
     private final QuizAttemptRepository quizAttemptRepository;
+    private final QuizAnswerRepository answerRepository;
 
     public HomeworkService(HomeworkRepository homeworkRepository,
                            HomeworkSubmissionRepository submissionRepository,
                            VideoRepository videoRepository,
                            SubjectService subjectService,
                            QuestionRepository questionRepository,
-                           QuizAttemptRepository quizAttemptRepository) {
+                           QuizAttemptRepository quizAttemptRepository,
+                           QuizAnswerRepository answerRepository) {
         this.homeworkRepository = homeworkRepository;
         this.submissionRepository = submissionRepository;
         this.videoRepository = videoRepository;
         this.subjectService = subjectService;
         this.questionRepository = questionRepository;
         this.quizAttemptRepository = quizAttemptRepository;
+        this.answerRepository = answerRepository;
     }
 
     public List<Homework> listPublished() {
@@ -141,30 +146,35 @@ public class HomeworkService {
     public void delete(Long id) {
         Homework hw = findById(id);
 
-        // 1. Quiz attempts — load then deleteAll so JPA cascades answers
-        //    and the quiz_attempt_questions ElementCollection rows.
+        // Step 1 — quiz_answers (child of quiz_attempts, must go first)
+        answerRepository.deleteByHomework(hw);
+        answerRepository.flush();
+
+        // Step 2 — quiz_attempt_questions ElementCollection rows.
+        // Clear the collection on each attempt entity so Hibernate removes
+        // the join-table rows before the attempt row itself is deleted.
         List<QuizAttempt> attempts = quizAttemptRepository.findByHomework(hw);
-        if (!attempts.isEmpty()) {
-            quizAttemptRepository.deleteAll(attempts);
-            quizAttemptRepository.flush();
+        for (QuizAttempt a : attempts) {
+            a.getQuestionIds().clear();
         }
+        quizAttemptRepository.saveAll(attempts);
+        quizAttemptRepository.flush();
 
-        // 2. Homework submissions.
-        List<HomeworkSubmission> subs = submissionRepository.findByHomework(hw);
-        if (!subs.isEmpty()) {
-            submissionRepository.deleteAll(subs);
-            submissionRepository.flush();
-        }
+        // Step 3 — quiz_attempts
+        quizAttemptRepository.deleteByHomework(hw);
+        quizAttemptRepository.flush();
 
-        // 3. Unlink bank questions — clearing the collection removes the
-        //    homework_questions join rows only. The questions themselves
-        //    are left intact in the bank.
+        // Step 4 — homework_submissions
+        submissionRepository.deleteByHomework(hw);
+        submissionRepository.flush();
+
+        // Step 5 — homework_questions join rows (unlink bank questions)
         hw.getQuestions().clear();
         homeworkRepository.save(hw);
         homeworkRepository.flush();
 
-        // 4. Finally the homework itself.
-        homeworkRepository.delete(hw);
+        // Step 6 — the homework itself
+        homeworkRepository.deleteById(id);
     }
 
     // === Submissions ===
