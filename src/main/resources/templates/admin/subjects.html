@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Manage Subjects')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <div class="page-head">
+        <h1>Subjects</h1>
+        <a th:href="@{/admin/subjects/new}" class="btn btn-primary">+ New subject</a>
+    </div>
+
+    <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+    <div class="alert alert-error"   th:if="${error}"   th:text="${error}"></div>
+
+    <p class="muted" th:if="${#lists.isEmpty(subjects)}">
+        No subjects yet. Use <b>+ New subject</b> to add your first one (e.g. Math, ESL).
+    </p>
+
+    <table class="table" th:if="${!#lists.isEmpty(subjects)}">
+        <thead>
+        <tr>
+            <th>Order</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Status</th>
+            <th>Actions</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="s : ${subjects}">
+            <td th:text="${s.displayOrder}">0</td>
+            <td>
+                <a th:href="@{|/admin/subjects/${s.id}/edit|}" th:text="${s.name}">Name</a>
+            </td>
+            <td class="muted" th:text="${s.description != null ? s.description : '—'}">—</td>
+            <td>
+                <span th:if="${s.active}"  class="badge" style="background:#28a745;color:#fff;">Active</span>
+                <span th:unless="${s.active}" class="badge" style="background:#6c757d;color:#fff;">Inactive</span>
+            </td>
+            <td>
+                <a th:href="@{|/admin/subjects/${s.id}/edit|}" class="btn">Edit</a>
+
+                <form th:action="@{|/admin/subjects/${s.id}/toggle|}" method="post" style="display:inline">
+                    <input type="hidden" name="active" th:value="${!s.active}">
+                    <button type="submit" class="btn"
+                            th:text="${s.active ? 'Deactivate' : 'Activate'}">Toggle</button>
+                </form>
+
+                <form th:action="@{|/admin/subjects/${s.id}/delete|}" method="post" style="display:inline"
+                      onsubmit="return confirm('Delete this subject? This only works if no videos or homework reference it.');">
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p class="muted" style="margin-top:1.5rem;">
+        Tip: if a subject is still in use by videos or homework, you can't delete it — but you can
+        <b>Deactivate</b> it so it won't show up in new-content dropdowns.
+    </p>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

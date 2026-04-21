@@ -36,6 +36,22 @@ public class QuizAttempt {
     @OneToMany(mappedBy = "attempt", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<QuizAnswer> answers = new ArrayList<>();
 
+    /**
+     * Question IDs selected for this attempt (supports "pick N of M" quizzes).
+     * Populated on startAttempt. Empty list means "use the homework's full pool".
+     * EAGER because the set is small (N ≤ pool size) and we always read it when
+     * we render the quiz page — avoids LazyInitializationException when the
+     * attempt is detached (open-in-view=false).
+     */
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(
+            name = "quiz_attempt_questions",
+            joinColumns = @JoinColumn(name = "attempt_id")
+    )
+    @Column(name = "question_id")
+    @OrderColumn(name = "order_index")
+    private List<Long> questionIds = new ArrayList<>();
+
     public QuizAttempt() {}
 
     @PrePersist
@@ -71,4 +87,7 @@ public class QuizAttempt {
 
     public List<QuizAnswer> getAnswers() { return answers; }
     public void setAnswers(List<QuizAnswer> answers) { this.answers = answers; }
+
+    public List<Long> getQuestionIds() { return questionIds; }
+    public void setQuestionIds(List<Long> questionIds) { this.questionIds = questionIds; }
 }

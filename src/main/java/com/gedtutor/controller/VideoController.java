@@ -1,8 +1,8 @@
 package com.gedtutor.controller;
 
-import com.gedtutor.model.GedSubject;
 import com.gedtutor.model.Video;
 import com.gedtutor.model.VideoVisibility;
+import com.gedtutor.service.SubjectService;
 import com.gedtutor.service.VideoService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -17,16 +17,22 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class VideoController {
 
     private final VideoService videoService;
+    private final SubjectService subjectService;
 
-    public VideoController(VideoService videoService) {
+    public VideoController(VideoService videoService, SubjectService subjectService) {
         this.videoService = videoService;
+        this.subjectService = subjectService;
     }
 
     @GetMapping
-    public String list(@RequestParam(required = false) GedSubject subject, Model model) {
-        model.addAttribute("videos", videoService.listPublicBySubject(subject));
-        model.addAttribute("subjects", GedSubject.values());
-        model.addAttribute("selectedSubject", subject);
+    public String list(@RequestParam(required = false) Long subjectId, Model model) {
+        model.addAttribute("videos", videoService.listPublicBySubject(subjectId));
+        // Show ALL subjects in the filter dropdown (including deactivated ones) so
+        // that videos under a deactivated subject are still discoverable on the
+        // public videos page. Deactivation only hides a subject from the admin
+        // "new video / new homework" pickers.
+        model.addAttribute("subjects", subjectService.listAll());
+        model.addAttribute("selectedSubjectId", subjectId);
         return "videos";
     }
 

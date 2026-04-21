@@ -11,6 +11,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,9 +54,10 @@ public class QuizController {
                                Model model) {
         Homework hw = homeworkService.findById(homeworkId);
         User student = userService.findByUsername(principal.getUsername());
-        List<Question> questions = quizService.getQuestions(hw);
 
+        // startAttempt now selects the subset of questions for this attempt.
         QuizAttempt attempt = quizService.startAttempt(student, hw);
+        List<Question> questions = quizService.getQuestionsForAttempt(attempt);
 
         model.addAttribute("hw", hw);
         model.addAttribute("questions", questions);
@@ -79,11 +81,12 @@ public class QuizController {
         boolean correct = quizService.submitAnswer(attemptId, questionId, answer);
         Question q = quizService.findQuestionById(questionId);
 
-        return ResponseEntity.ok(Map.of(
-                "correct", correct,
-                "correctAnswer", q.getCorrectAnswer(),
-                "explanation", q.getExplanation() != null ? q.getExplanation() : ""
-        ));
+        // HashMap tolerates null values; Map.of would NPE if correctAnswer is null.
+        Map<String, Object> body = new HashMap<>();
+        body.put("correct", correct);
+        body.put("correctAnswer", q.getCorrectAnswer() != null ? q.getCorrectAnswer() : "");
+        body.put("explanation", q.getExplanation() != null ? q.getExplanation() : "");
+        return ResponseEntity.ok(body);
     }
 
     @PostMapping("/attempt/{attemptId}/complete")

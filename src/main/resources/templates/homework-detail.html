@@ -8,7 +8,7 @@
     <a th:href="@{/homework}" class="back-link">&larr; All homework</a>
     <h1 th:text="${hw.title}">Homework title</h1>
     <p>
-        <span class="badge" th:text="${hw.subject}">MATH</span>
+        <span class="badge" th:text="${hw.subject != null ? hw.subject.name : ''}">Math</span>
         <span th:if="${hw.dueDate}">Due <b th:text="${#temporals.format(hw.dueDate,'MMM d, yyyy HH:mm')}">Date</b></span>
     </p>
 

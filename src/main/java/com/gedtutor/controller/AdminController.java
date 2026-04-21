@@ -2,10 +2,12 @@ package com.gedtutor.controller;
 
 import com.gedtutor.dto.HomeworkForm;
 import com.gedtutor.dto.QuestionForm;
+import com.gedtutor.dto.SubjectForm;
 import com.gedtutor.dto.VideoForm;
 import com.gedtutor.model.*;
 import com.gedtutor.service.HomeworkService;
 import com.gedtutor.service.QuizService;
+import com.gedtutor.service.SubjectService;
 import com.gedtutor.service.UserService;
 import com.gedtutor.service.VideoService;
 import jakarta.validation.Valid;
@@ -17,6 +19,9 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Controller
 @RequestMapping("/admin")
 public class AdminController {
@@ -25,13 +30,16 @@ public class AdminController {
     private final UserService userService;
     private final HomeworkService homeworkService;
     private final QuizService quizService;
+    private final SubjectService subjectService;
 
     public AdminController(VideoService videoService, UserService userService,
-                           HomeworkService homeworkService, QuizService quizService) {
+                           HomeworkService homeworkService, QuizService quizService,
+                           SubjectService subjectService) {
         this.videoService = videoService;
         this.userService = userService;
         this.homeworkService = homeworkService;
         this.quizService = quizService;
+        this.subjectService = subjectService;
     }
 
     // ===================== Dashboard =====================
@@ -41,7 +49,93 @@ public class AdminController {
         model.addAttribute("videoCount", videoService.listAll().size());
         model.addAttribute("userCount", userService.findAll().size());
         model.addAttribute("homeworkCount", homeworkService.listAll().size());
+        model.addAttribute("questionCount", quizService.listAllQuestions().size());
+        model.addAttribute("subjectCount", subjectService.listAll().size());
         return "admin/dashboard";
+    }
+
+    // ===================== Subjects =====================
+
+    @GetMapping("/subjects")
+    public String subjects(Model model) {
+        model.addAttribute("subjects", subjectService.listAll());
+        model.addAttribute("form", new SubjectForm());
+        return "admin/subjects";
+    }
+
+    @GetMapping("/subjects/new")
+    public String newSubject(Model model) {
+        model.addAttribute("form", new SubjectForm());
+        return "admin/subject-form";
+    }
+
+    @PostMapping("/subjects/new")
+    public String createSubject(@Valid @ModelAttribute("form") SubjectForm form,
+                                BindingResult binding,
+                                RedirectAttributes ra) {
+        if (binding.hasErrors()) {
+            return "admin/subject-form";
+        }
+        try {
+            subjectService.save(form);
+            ra.addFlashAttribute("message", "Subject '" + form.getName() + "' created.");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+            return "redirect:/admin/subjects/new";
+        }
+        return "redirect:/admin/subjects";
+    }
+
+    @GetMapping("/subjects/{id}/edit")
+    public String editSubject(@PathVariable Long id, Model model) {
+        Subject s = subjectService.findById(id);
+        SubjectForm form = new SubjectForm();
+        form.setId(s.getId());
+        form.setName(s.getName());
+        form.setDescription(s.getDescription());
+        form.setDisplayOrder(s.getDisplayOrder());
+        form.setActive(s.isActive());
+        model.addAttribute("form", form);
+        return "admin/subject-form";
+    }
+
+    @PostMapping("/subjects/{id}/edit")
+    public String updateSubject(@PathVariable Long id,
+                                @Valid @ModelAttribute("form") SubjectForm form,
+                                BindingResult binding,
+                                RedirectAttributes ra) {
+        if (binding.hasErrors()) {
+            return "admin/subject-form";
+        }
+        form.setId(id);
+        try {
+            subjectService.save(form);
+            ra.addFlashAttribute("message", "Subject updated.");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+            return "redirect:/admin/subjects/" + id + "/edit";
+        }
+        return "redirect:/admin/subjects";
+    }
+
+    @PostMapping("/subjects/{id}/toggle")
+    public String toggleSubject(@PathVariable Long id,
+                                @RequestParam boolean active,
+                                RedirectAttributes ra) {
+        subjectService.setActive(id, active);
+        ra.addFlashAttribute("message", active ? "Subject activated." : "Subject deactivated.");
+        return "redirect:/admin/subjects";
+    }
+
+    @PostMapping("/subjects/{id}/delete")
+    public String deleteSubject(@PathVariable Long id, RedirectAttributes ra) {
+        try {
+            subjectService.delete(id);
+            ra.addFlashAttribute("message", "Subject deleted.");
+        } catch (IllegalStateException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/subjects";
     }
 
     // ===================== Videos =====================
@@ -57,7 +151,7 @@ public class AdminController {
         VideoForm form = new VideoForm();
         form.setVisibility(VideoVisibility.PRIVATE);
         model.addAttribute("form", form);
-        model.addAttribute("subjects", GedSubject.values());
+        model.addAttribute("subjects", subjectService.listActive());
         model.addAttribute("visibilities", VideoVisibility.values());
         return "admin/video-form";
     }
@@ -69,7 +163,7 @@ public class AdminController {
                               Model model,
                               RedirectAttributes ra) {
         if (binding.hasErrors()) {
-            model.addAttribute("subjects", GedSubject.values());
+            model.addAttribute("subjects", subjectService.listActive());
             model.addAttribute("visibilities", VideoVisibility.values());
             return "admin/video-form";
         }
@@ -87,10 +181,10 @@ public class AdminController {
         form.setTitle(v.getTitle());
         form.setDescription(v.getDescription());
         form.setVideoUrl(v.getVideoUrl());
-        form.setSubject(v.getSubject());
+        form.setSubjectId(v.getSubject() != null ? v.getSubject().getId() : null);
         form.setVisibility(v.getVisibility());
         model.addAttribute("form", form);
-        model.addAttribute("subjects", GedSubject.values());
+        model.addAttribute("subjects", subjectService.listActive());
         model.addAttribute("visibilities", VideoVisibility.values());
         return "admin/video-form";
     }
@@ -102,7 +196,7 @@ public class AdminController {
                               Model model,
                               RedirectAttributes ra) {
         if (binding.hasErrors()) {
-            model.addAttribute("subjects", GedSubject.values());
+            model.addAttribute("subjects", subjectService.listActive());
             model.addAttribute("visibilities", VideoVisibility.values());
             return "admin/video-form";
         }
@@ -124,6 +218,14 @@ public class AdminController {
     public String deleteVideo(@PathVariable Long id, RedirectAttributes ra) {
         videoService.delete(id);
         ra.addFlashAttribute("message", "Video deleted.");
+        return "redirect:/admin/videos";
+    }
+
+    /** Flip every video in the DB to PRIVATE in one shot. */
+    @PostMapping("/videos/all-private")
+    public String setAllVideosPrivate(RedirectAttributes ra) {
+        videoService.setAllPrivate();
+        ra.addFlashAttribute("message", "All videos set to PRIVATE.");
         return "redirect:/admin/videos";
     }
 
@@ -175,7 +277,7 @@ public class AdminController {
     @GetMapping("/homework/new")
     public String newHomework(Model model) {
         model.addAttribute("form", new HomeworkForm());
-        model.addAttribute("subjects", GedSubject.values());
+        model.addAttribute("subjects", subjectService.listActive());
         model.addAttribute("videos", videoService.listAll());
         return "admin/homework-form";
     }
@@ -186,12 +288,34 @@ public class AdminController {
                                  Model model,
                                  RedirectAttributes ra) {
         if (binding.hasErrors()) {
-            model.addAttribute("subjects", GedSubject.values());
+            model.addAttribute("subjects", subjectService.listActive());
             model.addAttribute("videos", videoService.listAll());
             return "admin/homework-form";
         }
-        homeworkService.save(form);
-        ra.addFlashAttribute("message", "Homework created.");
+        // Save the homework. If a poolSize was declared, HomeworkService
+        // randomly picks that many questions from the subject's bank and
+        // links them to the new homework. Questions themselves are managed
+        // globally on /admin/questions.
+        Homework saved = homeworkService.save(form);
+        Integer target = saved.getPoolSize();
+        if (target != null && target > 0) {
+            int linked = saved.getQuestions().size();
+            if (linked == target) {
+                ra.addFlashAttribute("message",
+                        "Homework '" + saved.getTitle() + "' created with "
+                                + linked + " random questions from the "
+                                + saved.getSubject().getName() + " bank.");
+            } else {
+                ra.addFlashAttribute("message",
+                        "Homework '" + saved.getTitle() + "' created. Only "
+                                + linked + " of " + target + " questions could be linked — "
+                                + "the " + saved.getSubject().getName()
+                                + " bank doesn't have enough questions yet. "
+                                + "Add more on the Questions page.");
+            }
+        } else {
+            ra.addFlashAttribute("message", "Homework '" + saved.getTitle() + "' created.");
+        }
         return "redirect:/admin/homework";
     }
 
@@ -202,12 +326,14 @@ public class AdminController {
         form.setId(hw.getId());
         form.setTitle(hw.getTitle());
         form.setInstructions(hw.getInstructions());
-        form.setSubject(hw.getSubject());
+        form.setSubjectId(hw.getSubject() != null ? hw.getSubject().getId() : null);
         form.setDueDate(hw.getDueDate());
         form.setPublished(hw.isPublished());
+        form.setQuestionsPerAttempt(hw.getQuestionsPerAttempt());
+        form.setPoolSize(hw.getPoolSize());
         form.setVideoId(hw.getVideo() != null ? hw.getVideo().getId() : null);
         model.addAttribute("form", form);
-        model.addAttribute("subjects", GedSubject.values());
+        model.addAttribute("subjects", subjectService.listActive());
         model.addAttribute("videos", videoService.listAll());
         return "admin/homework-form";
     }
@@ -219,7 +345,7 @@ public class AdminController {
                                  Model model,
                                  RedirectAttributes ra) {
         if (binding.hasErrors()) {
-            model.addAttribute("subjects", GedSubject.values());
+            model.addAttribute("subjects", subjectService.listActive());
             model.addAttribute("videos", videoService.listAll());
             return "admin/homework-form";
         }
@@ -255,46 +381,57 @@ public class AdminController {
         return "redirect:/admin/homework/" + homeworkId + "/submissions";
     }
 
-    // ===================== Questions =====================
+    // ===================== Questions (global question bank) =====================
+    //
+    // Questions live in a bank indexed by subject. A homework doesn't "own"
+    // its questions anymore — instead the homework links to them via the
+    // homework_questions join table. When a homework is created with a
+    // poolSize target, HomeworkService randomly picks N bank questions
+    // matching the homework's subject and links them. Admins manage the
+    // bank on /admin/questions; they no longer manage questions per
+    // homework.
 
-    @GetMapping("/homework/{hwId}/questions")
-    public String questions(@PathVariable Long hwId, Model model) {
-        Homework hw = homeworkService.findById(hwId);
-        model.addAttribute("hw", hw);
-        model.addAttribute("questions", quizService.getQuestions(hw));
-        return "admin/questions";
+    @GetMapping("/questions")
+    public String allQuestions(Model model) {
+        model.addAttribute("questions", quizService.listAllQuestions());
+        return "admin/questions-all";
     }
 
-    @GetMapping("/homework/{hwId}/questions/new")
-    public String newQuestion(@PathVariable Long hwId, Model model) {
-        model.addAttribute("hw", homeworkService.findById(hwId));
+    @GetMapping("/questions/new")
+    public String newQuestionGlobal(Model model) {
         model.addAttribute("form", new QuestionForm());
         model.addAttribute("types", QuestionType.values());
-        return "admin/question-form";
+        model.addAttribute("subjects", subjectService.listActive());
+        return "admin/question-global-form";
     }
 
-    @PostMapping("/homework/{hwId}/questions/new")
-    public String createQuestion(@PathVariable Long hwId,
-                                 @Valid @ModelAttribute("form") QuestionForm form,
-                                 BindingResult binding,
-                                 Model model,
-                                 RedirectAttributes ra) {
-        if (binding.hasErrors()) {
-            model.addAttribute("hw", homeworkService.findById(hwId));
-            model.addAttribute("types", QuestionType.values());
-            return "admin/question-form";
+    @PostMapping("/questions/new")
+    public String createQuestionGlobal(@Valid @ModelAttribute("form") QuestionForm form,
+                                       BindingResult binding,
+                                       Model model,
+                                       RedirectAttributes ra) {
+        if (form.getSubjectId() == null) {
+            binding.rejectValue("subjectId", "required", "Please pick a subject.");
         }
-        quizService.saveQuestion(hwId, form);
-        ra.addFlashAttribute("message", "Question added.");
-        return "redirect:/admin/homework/" + hwId + "/questions";
+        if (binding.hasErrors()) {
+            model.addAttribute("types", QuestionType.values());
+            model.addAttribute("subjects", subjectService.listActive());
+            return "admin/question-global-form";
+        }
+        quizService.saveQuestion(form.getSubjectId(), form);
+        ra.addFlashAttribute("message", "Question added to the bank.");
+        return "redirect:/admin/questions";
     }
 
-    @GetMapping("/homework/{hwId}/questions/{qId}/edit")
-    public String editQuestion(@PathVariable Long hwId, @PathVariable Long qId, Model model) {
-        Homework hw = homeworkService.findById(hwId);
-        Question q = quizService.findQuestionById(qId);
+    @GetMapping("/questions/{qId}/edit")
+    public String editQuestionGlobal(@PathVariable Long qId, Model model) {
+        // Load with choices + subject eagerly fetched — otherwise the
+        // stream over q.getChoices() below hits LazyInitializationException
+        // once the tx closes (spring.jpa.open-in-view=false).
+        Question q = quizService.findQuestionByIdWithChoices(qId);
         QuestionForm form = new QuestionForm();
         form.setId(q.getId());
+        form.setSubjectId(q.getSubject() != null ? q.getSubject().getId() : null);
         form.setType(q.getType());
         form.setQuestionText(q.getQuestionText());
         form.setCorrectAnswer(q.getCorrectAnswer());
@@ -304,33 +441,53 @@ public class AdminController {
             form.setChoices(q.getChoices().stream()
                     .map(QuestionChoice::getChoiceText).toList());
         }
-        model.addAttribute("hw", hw);
         model.addAttribute("form", form);
         model.addAttribute("types", QuestionType.values());
-        return "admin/question-form";
+        model.addAttribute("subjects", subjectService.listActive());
+        return "admin/question-global-form";
     }
 
-    @PostMapping("/homework/{hwId}/questions/{qId}/edit")
-    public String updateQuestion(@PathVariable Long hwId, @PathVariable Long qId,
-                                 @Valid @ModelAttribute("form") QuestionForm form,
-                                 BindingResult binding,
-                                 Model model,
-                                 RedirectAttributes ra) {
+    @PostMapping("/questions/{qId}/edit")
+    public String updateQuestionGlobal(@PathVariable Long qId,
+                                       @Valid @ModelAttribute("form") QuestionForm form,
+                                       BindingResult binding,
+                                       Model model,
+                                       RedirectAttributes ra) {
+        if (form.getSubjectId() == null) {
+            binding.rejectValue("subjectId", "required", "Please pick a subject.");
+        }
         if (binding.hasErrors()) {
-            model.addAttribute("hw", homeworkService.findById(hwId));
             model.addAttribute("types", QuestionType.values());
-            return "admin/question-form";
+            model.addAttribute("subjects", subjectService.listActive());
+            return "admin/question-global-form";
         }
         form.setId(qId);
-        quizService.saveQuestion(hwId, form);
+        quizService.saveQuestion(form.getSubjectId(), form);
         ra.addFlashAttribute("message", "Question updated.");
-        return "redirect:/admin/homework/" + hwId + "/questions";
+        return "redirect:/admin/questions";
     }
 
-    @PostMapping("/homework/{hwId}/questions/{qId}/delete")
-    public String deleteQuestion(@PathVariable Long hwId, @PathVariable Long qId, RedirectAttributes ra) {
+    @PostMapping("/questions/{qId}/delete")
+    public String deleteQuestionGlobal(@PathVariable Long qId, RedirectAttributes ra) {
         quizService.deleteQuestion(qId);
         ra.addFlashAttribute("message", "Question deleted.");
-        return "redirect:/admin/homework/" + hwId + "/questions";
+        return "redirect:/admin/questions";
+    }
+
+    /**
+     * Inline "save this row" from the /admin/questions table. Returns JSON
+     * so the page can update the row in-place without a reload.
+     */
+    @PostMapping("/questions/{qId}/inline-update")
+    @ResponseBody
+    public Map<String, Object> inlineUpdateQuestion(@PathVariable Long qId,
+                                                    @RequestParam(required = false) String questionText,
+                                                    @RequestParam(required = false) String correctAnswer) {
+        Question saved = quizService.updateQuestionInline(qId, questionText, correctAnswer);
+        Map<String, Object> res = new HashMap<>();
+        res.put("id", saved.getId());
+        res.put("questionText", saved.getQuestionText());
+        res.put("correctAnswer", saved.getCorrectAnswer());
+        return res;
     }
 }

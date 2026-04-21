@@ -16,4 +16,7 @@ public interface HomeworkSubmissionRepository extends JpaRepository<HomeworkSubm
 
     @Query("SELECT s FROM HomeworkSubmission s JOIN FETCH s.student WHERE s.homework = :homework ORDER BY s.submittedAt DESC")
     List<HomeworkSubmission> findByHomeworkOrderBySubmittedAtDesc(@Param("homework") Homework homework);
+
+    /** Used during homework delete to clear dependent submissions. */
+    List<HomeworkSubmission> findByHomework(Homework homework);
 }

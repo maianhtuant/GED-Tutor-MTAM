@@ -2,6 +2,7 @@ package com.gedtutor.config;
 
 import com.gedtutor.model.*;
 import com.gedtutor.repository.HomeworkRepository;
+import com.gedtutor.repository.SubjectRepository;
 import com.gedtutor.repository.UserRepository;
 import com.gedtutor.repository.VideoRepository;
 import com.gedtutor.service.VideoUrlParser;
@@ -13,8 +14,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import java.time.LocalDateTime;
 
 /**
- * Seeds a default admin user, a demo student, and a few sample videos/homework on first run.
- * Safe to run repeatedly — it only inserts if the row is missing.
+ * Seeds a default admin user, a demo student, the default subject list, and a few
+ * sample videos/homework on first run. Safe to run repeatedly — it only inserts if
+ * the row is missing.
  */
 @Configuration
 public class DataSeeder {
@@ -23,9 +25,11 @@ public class DataSeeder {
     CommandLineRunner seed(UserRepository users,
                            VideoRepository videos,
                            HomeworkRepository homework,
+                           SubjectRepository subjects,
                            VideoUrlParser urlParser,
                            PasswordEncoder encoder) {
         return args -> {
+            // --- Users ---
             User admin = users.findByUsername("admin").orElseGet(() -> {
                 User u = new User();
                 u.setUsername("admin");
@@ -48,39 +52,48 @@ public class DataSeeder {
                 return users.save(u);
             });
 
+            // --- Subjects (idempotent, case-insensitive lookup) ---
+            Subject math = ensureSubject(subjects, "Math", "Arithmetic, algebra, geometry, and data analysis", 1);
+            Subject science = ensureSubject(subjects, "Science", "Life, physical, and earth sciences", 2);
+            Subject socialStudies = ensureSubject(subjects, "Social Studies", "Civics, U.S. history, economics, geography", 3);
+            Subject languageArts = ensureSubject(subjects, "Language Arts", "Reading, writing, grammar, and composition", 4);
+            ensureSubject(subjects, "ESL", "English as a Second Language support lessons", 5);
+
+            // --- Videos ---
             if (videos.count() == 0) {
                 saveVideo(videos, urlParser, admin,
                         "Intro to GED Math",
                         "Overview of the GED Math test and key topics.",
                         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-                        GedSubject.MATH, VideoVisibility.PUBLIC);
+                        math, VideoVisibility.PUBLIC);
                 saveVideo(videos, urlParser, admin,
                         "Algebra Basics: Solving Linear Equations",
                         "Learn how to isolate variables step by step.",
                         "https://www.youtube.com/watch?v=NybHckSEQBI",
-                        GedSubject.MATH, VideoVisibility.PUBLIC);
+                        math, VideoVisibility.PUBLIC);
                 saveVideo(videos, urlParser, admin,
                         "Reading Comprehension Strategies",
                         "Active reading techniques for the GED.",
                         "https://www.youtube.com/watch?v=5MgBikgcWnY",
-                        GedSubject.LANGUAGE_ARTS, VideoVisibility.PUBLIC);
+                        languageArts, VideoVisibility.PUBLIC);
                 saveVideo(videos, urlParser, admin,
                         "Cells and Energy (Biology)",
                         "Mitochondria, photosynthesis, and cellular respiration.",
                         "https://www.youtube.com/watch?v=URUJD5NEXC8",
-                        GedSubject.SCIENCE, VideoVisibility.PUBLIC);
+                        science, VideoVisibility.PUBLIC);
                 saveVideo(videos, urlParser, admin,
                         "U.S. Constitution Overview",
                         "The branches of government and the Bill of Rights.",
                         "https://www.youtube.com/watch?v=mQ_pL9aYy6Y",
-                        GedSubject.SOCIAL_STUDIES, VideoVisibility.PUBLIC);
+                        socialStudies, VideoVisibility.PUBLIC);
             }
 
+            // --- Homework ---
             if (homework.count() == 0) {
                 Homework h1 = new Homework();
                 h1.setTitle("Practice: Solve 10 Linear Equations");
                 h1.setInstructions("Solve for x and paste the step-by-step work. Example: 3x + 5 = 20 → x = 5.");
-                h1.setSubject(GedSubject.MATH);
+                h1.setSubject(math);
                 h1.setPublished(true);
                 h1.setDueDate(LocalDateTime.now().plusDays(7));
                 homework.save(h1);
@@ -88,16 +101,26 @@ public class DataSeeder {
                 Homework h2 = new Homework();
                 h2.setTitle("Short Essay: My Reading Goals");
                 h2.setInstructions("Write a 200-word essay on your reading goals for the next month.");
-                h2.setSubject(GedSubject.LANGUAGE_ARTS);
+                h2.setSubject(languageArts);
                 h2.setPublished(true);
                 homework.save(h2);
             }
         };
     }
 
+    private Subject ensureSubject(SubjectRepository repo, String name, String description, int order) {
+        return repo.findByNameIgnoreCase(name).orElseGet(() -> {
+            Subject s = new Subject(name);
+            s.setDescription(description);
+            s.setDisplayOrder(order);
+            s.setActive(true);
+            return repo.save(s);
+        });
+    }
+
     private void saveVideo(VideoRepository repo, VideoUrlParser parser, User admin,
                            String title, String desc, String url,
-                           GedSubject subject, VideoVisibility visibility) {
+                           Subject subject, VideoVisibility visibility) {
         VideoUrlParser.Parsed p = parser.parse(url);
         Video v = new Video();
         v.setTitle(title);

@@ -8,28 +8,27 @@
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
-<main class="container">
-    <a th:href="@{|/admin/homework/${hw.id}/questions|}" class="back-link">&larr; Back to Questions</a>
+<main class="container narrow">
+    <a th:href="@{/admin/questions}" class="back-link">&larr; Back to Questions</a>
     <h1 th:text="${form.id == null} ? 'Add Question' : 'Edit Question'">Question</h1>
 
-    <!-- Bulk-add counter: only shown when adding a new question AND the
-         homework has a declared poolSize target. Edits and unscoped adds
-         don't get a counter. -->
-    <div th:if="${form.id == null and poolTarget != null and poolTarget > 0}"
-         style="background:#eef6ff; border:1px solid #b8daff; border-radius:6px; padding:0.75rem 1rem; margin-bottom:1rem;">
-        <strong>Question <span th:text="${currentNumber}">1</span> of <span th:text="${poolTarget}">10</span></strong>
-        <span class="muted" style="margin-left:0.5rem;"
-              th:text="'for &quot;' + ${hw.title} + '&quot;'"></span>
-    </div>
+    <form th:action="${form.id == null} ? @{/admin/questions/new} : @{|/admin/questions/${form.id}/edit|}"
+          method="post" id="questionForm" class="card">
 
-    <!-- Flash message from the previous save in the bulk-add loop. -->
-    <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
-
-    <form th:action="${form.id == null} ? @{|/admin/homework/${hw.id}/questions/new|} : @{|/admin/homework/${hw.id}/questions/${form.id}/edit|}"
-          method="post" id="questionForm">
+        <label>Subject
+            <select name="subjectId" required>
+                <option value="">— choose a subject —</option>
+                <option th:each="s : ${subjects}"
+                        th:value="${s.id}"
+                        th:text="${s.name}"
+                        th:selected="${form.subjectId != null and form.subjectId == s.id}"></option>
+            </select>
+            <span class="field-error"
+                  th:if="${#fields.hasErrors('form.subjectId')}">Please pick a subject.</span>
+        </label>
 
         <label>Question Type
-            <select name="type" id="typeSelect" required th:value="${form.type}">
+            <select name="type" id="typeSelect" required>
                 <option value="">-- Select type --</option>
                 <option th:each="t : ${types}" th:value="${t}" th:text="${t}"
                         th:selected="${form.type == t}"></option>
@@ -73,7 +72,7 @@
                        th:value="${form.correctAnswer}"
                        placeholder="The expected answer (case-insensitive)">
             </label>
-            <div class="fill-hint" id="fillHint">Tip: partial matches are accepted (e.g. student types part of the answer)</div>
+            <div class="fill-hint" id="fillHint">Tip: partial matches are accepted.</div>
         </div>
 
         <label>Explanation (optional — shown after answering)
@@ -84,7 +83,7 @@
         <input type="hidden" name="orderIndex" th:value="${form.orderIndex}">
 
         <button type="submit" class="btn btn-primary">Save Question</button>
-        <a th:href="@{|/admin/homework/${hw.id}/questions|}" class="btn">Cancel</a>
+        <a th:href="@{/admin/questions}" class="btn">Cancel</a>
     </form>
 </main>
 
@@ -93,9 +92,8 @@
 <script th:inline="javascript">
     const savedType = /*[[${form.type}]]*/ null;
 
-    // Each type section has its own correctAnswer input. We disable the inputs
-    // of hidden sections so only ONE correctAnswer field is submitted — otherwise
-    // the browser posts all three and Spring binds the wrong one.
+    // Same logic as the per-homework question form: disable hidden sections
+    // so only ONE correctAnswer input is submitted.
     const SECTION_IDS = ['choicesSection', 'tfSection', 'fillSection'];
 
     function setSectionEnabled(sectionId, enabled) {
@@ -125,7 +123,6 @@
         showFieldsForType(this.value);
     });
 
-    // Default: all sections disabled until a type is chosen
     SECTION_IDS.forEach(id => setSectionEnabled(id, false));
     if (savedType) showFieldsForType(savedType);
 </script>

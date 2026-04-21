@@ -17,7 +17,7 @@
         <tbody>
         <tr th:each="hw : ${homework}">
             <td th:text="${hw.title}">Title</td>
-            <td th:text="${hw.subject}">MATH</td>
+            <td th:text="${hw.subject != null ? hw.subject.name : '—'}">Math</td>
             <td th:text="${hw.dueDate != null ? #temporals.format(hw.dueDate,'MMM d, yyyy HH:mm') : '—'}">—</td>
             <td>
                 <span class="muted">Open to see status</span>

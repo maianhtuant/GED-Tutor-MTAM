@@ -35,9 +35,9 @@ public class Video {
     @Column(length = 20)
     private String provider;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private GedSubject subject;
+    @ManyToOne(fetch = FetchType.EAGER, optional = false)
+    @JoinColumn(name = "subject_id", nullable = false)
+    private Subject subject;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -57,7 +57,7 @@ public class Video {
     @PrePersist
     void onCreate() {
         if (createdAt == null) createdAt = LocalDateTime.now();
-        if (visibility == null) visibility = VideoVisibility.PUBLIC;
+        if (visibility == null) visibility = VideoVisibility.PRIVATE;
     }
 
     @PreUpdate
@@ -85,8 +85,8 @@ public class Video {
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }
 
-    public GedSubject getSubject() { return subject; }
-    public void setSubject(GedSubject subject) { this.subject = subject; }
+    public Subject getSubject() { return subject; }
+    public void setSubject(Subject subject) { this.subject = subject; }
 
     public VideoVisibility getVisibility() { return visibility; }
     public void setVisibility(VideoVisibility visibility) { this.visibility = visibility; }

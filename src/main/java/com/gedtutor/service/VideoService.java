@@ -1,7 +1,7 @@
 package com.gedtutor.service;
 
 import com.gedtutor.dto.VideoForm;
-import com.gedtutor.model.GedSubject;
+import com.gedtutor.model.Subject;
 import com.gedtutor.model.User;
 import com.gedtutor.model.Video;
 import com.gedtutor.model.VideoVisibility;
@@ -16,18 +16,23 @@ public class VideoService {
 
     private final VideoRepository videoRepository;
     private final VideoUrlParser urlParser;
+    private final SubjectService subjectService;
 
-    public VideoService(VideoRepository videoRepository, VideoUrlParser urlParser) {
+    public VideoService(VideoRepository videoRepository,
+                        VideoUrlParser urlParser,
+                        SubjectService subjectService) {
         this.videoRepository = videoRepository;
         this.urlParser = urlParser;
+        this.subjectService = subjectService;
     }
 
     public List<Video> listPublic() {
         return videoRepository.findByVisibilityOrderByCreatedAtDesc(VideoVisibility.PUBLIC);
     }
 
-    public List<Video> listPublicBySubject(GedSubject subject) {
-        if (subject == null) return listPublic();
+    public List<Video> listPublicBySubject(Long subjectId) {
+        if (subjectId == null) return listPublic();
+        Subject subject = subjectService.findById(subjectId);
         return videoRepository.findByVisibilityAndSubjectOrderByCreatedAtDesc(VideoVisibility.PUBLIC, subject);
     }
 
@@ -49,7 +54,7 @@ public class VideoService {
         v.setVideoUrl(form.getVideoUrl());
         v.setProvider(parsed.provider());
         v.setEmbedId(parsed.embedId());
-        v.setSubject(form.getSubject());
+        v.setSubject(subjectService.findById(form.getSubjectId()));
         v.setVisibility(form.getVisibility());
         v.setUploadedBy(uploader);
         return videoRepository.save(v);
@@ -66,7 +71,7 @@ public class VideoService {
             v.setProvider(parsed.provider());
             v.setEmbedId(parsed.embedId());
         }
-        v.setSubject(form.getSubject());
+        v.setSubject(subjectService.findById(form.getSubjectId()));
         v.setVisibility(form.getVisibility());
         return videoRepository.save(v);
     }

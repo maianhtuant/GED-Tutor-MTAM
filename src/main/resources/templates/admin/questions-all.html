@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('All Questions')}"></head>
+<style>
+    /* ~1 inch of breathing room on each side of the questions page. */
+    main.container {
+        max-width: none;
+        width: auto;
+        padding-left: 1in;
+        padding-right: 1in;
+        box-sizing: border-box;
+    }
+
+    /* ── Big, airy invoice-style table ───────────────────────── */
+    .q-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        font-size: 0.95rem;
+    }
+    .q-table thead tr:first-child th {
+        background: #fafbfc;
+        color: #6b7280;
+        font-weight: 600;
+        font-size: 0.8rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        text-align: left;
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        white-space: nowrap;
+    }
+    .q-table tbody td {
+        padding: 0.2rem 1.25rem;   /* ~0.3 inch rows for short questions */
+        border-bottom: 1px dashed #e5e7eb;
+        vertical-align: middle;
+        color: #374151;
+        font-size: 0.9rem;
+    }
+    .q-table tbody tr:hover {
+        background: #f9fafb;
+    }
+
+    /* Sortable column header with up/down chevrons like the mockup. */
+    .q-table th.sortable {
+        cursor: pointer;
+        user-select: none;
+    }
+    .q-table th.sortable .sort-arrows {
+        display: inline-flex;
+        flex-direction: column;
+        margin-left: 0.5rem;
+        line-height: 1;
+        vertical-align: middle;
+        gap: 2px;
+    }
+    .q-table th.sortable .sort-arrows .up,
+    .q-table th.sortable .sort-arrows .down {
+        width: 0;
+        height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+    }
+    .q-table th.sortable .sort-arrows .up {
+        border-bottom: 5px solid #b0b6c1;
+    }
+    .q-table th.sortable .sort-arrows .down {
+        border-top: 5px solid #b0b6c1;
+    }
+    .q-table th.sort-asc  .sort-arrows .up   { border-bottom-color: #374151; }
+    .q-table th.sort-desc .sort-arrows .down { border-top-color: #374151; }
+
+    /* Column widths: Subject + Type stay slim on the left, Question takes
+       most of the row, Correct answer + Actions sit on the right. */
+    .q-table th:nth-child(1), .q-table td:nth-child(1) { width:  8%; min-width:  90px; }
+    .q-table th:nth-child(2), .q-table td:nth-child(2) { width: 10%; min-width: 110px; }
+    .q-table th:nth-child(3), .q-table td:nth-child(3) { width: 50%; min-width: 360px; }
+    .q-table th:nth-child(4), .q-table td:nth-child(4) { width: 14%; min-width: 140px; text-align: right; }
+    .q-table th:nth-child(5), .q-table td:nth-child(5) { width: 18%; min-width: 240px; text-align: right; }
+
+    /* Inline editors */
+    .q-table td textarea,
+    .q-table td input[type=text] {
+        width: 100%;
+        box-sizing: border-box;
+        font: inherit;
+        padding: 0.2rem 0.55rem;
+        border: 1px solid #e5e7eb;
+        border-radius: 5px;
+        background: #fff;
+        resize: vertical;
+    }
+    .q-table td textarea.inline-text {
+        min-height: 1.55rem;    /* ~0.3 inch: one tight line */
+        line-height: 1.3;
+        overflow: hidden;       /* auto-grow for long questions */
+    }
+    /* Keep the answer input + action buttons aligned to the right edge. */
+    .q-table td.col-answer input {
+        text-align: right;
+    }
+    .q-table td:nth-child(5) > * {
+        vertical-align: middle;
+    }
+    .q-table td textarea:focus,
+    .q-table td input[type=text]:focus {
+        outline: 2px solid #4a90e2;
+        border-color: #4a90e2;
+    }
+    .q-table td.dirty textarea,
+    .q-table td.dirty input[type=text] {
+        background: #fffbe5;
+    }
+
+    /* Filter row */
+    .filter-row th {
+        background: #fff !important;
+        padding: 0.6rem 1rem !important;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .filter-row input,
+    .filter-row select {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 0.45rem 0.6rem;
+        font: inherit;
+        border: 1px solid #e5e7eb;
+        border-radius: 6px;
+        background: #fff;
+    }
+
+    /* Status + buttons */
+    .row-status {
+        display: inline-block;
+        font-size: 0.8rem;
+        color: #6b7280;
+        margin-left: 0.4rem;
+        min-width: 4rem;
+    }
+    .row-status.saved { color: #197d19; }
+    .row-status.error { color: #c0392b; }
+
+    .q-table .btn-sm {
+        padding: 0.2rem 0.65rem;
+        font-size: 0.8rem;
+        border-radius: 5px;
+    }
+    .btn-sm.save-row {
+        background: #4a90e2;
+        color: #fff;
+        border: 0;
+        cursor: pointer;
+    }
+    .btn-sm.save-row:disabled {
+        background: #bcd1eb;
+        cursor: default;
+    }
+
+    /* First column styled like the blue invoice number in the mockup. */
+    .q-table td.col-subject {
+        color: #2563eb;
+        font-weight: 500;
+    }
+    .q-table .badge {
+        display: inline-block;
+        padding: 0.25rem 0.6rem;
+        background: #eef2ff;
+        color: #4338ca;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        font-weight: 500;
+    }
+
+    .empty-hint {
+        padding: 1.5rem;
+        text-align: center;
+        color: #888;
+        font-style: italic;
+    }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <div class="page-head">
+        <h1>Questions</h1>
+        <a th:href="@{/admin/questions/new}" class="btn btn-primary">+ New question</a>
+    </div>
+
+    <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+
+    <div th:if="${#lists.isEmpty(questions)}" class="empty">
+        No questions yet. Click "New question" to add one.
+    </div>
+
+    <table class="table q-table" th:if="${!#lists.isEmpty(questions)}" id="questionsTable">
+        <thead>
+        <tr>
+            <th class="sortable" data-sort="subject">
+                Subject
+                <span class="sort-arrows"><span class="up"></span><span class="down"></span></span>
+            </th>
+            <th class="sortable" data-sort="type">
+                Type
+                <span class="sort-arrows"><span class="up"></span><span class="down"></span></span>
+            </th>
+            <th class="sortable" data-sort="text">
+                Question
+                <span class="sort-arrows"><span class="up"></span><span class="down"></span></span>
+            </th>
+            <th class="sortable" data-sort="answer">
+                Correct answer
+                <span class="sort-arrows"><span class="up"></span><span class="down"></span></span>
+            </th>
+            <th style="width:18rem;">Actions</th>
+        </tr>
+        <tr class="filter-row">
+            <th>
+                <input type="text" id="filterSubject" placeholder="Filter subject…"
+                       autocomplete="off">
+            </th>
+            <th>
+                <select id="filterType">
+                    <option value="">All types</option>
+                    <option value="MULTIPLE_CHOICE">Multiple choice</option>
+                    <option value="TRUE_FALSE">True / False</option>
+                    <option value="FILL_BLANK">Fill in the blank</option>
+                </select>
+            </th>
+            <th>
+                <input type="text" id="filterText" placeholder="Filter question text…"
+                       autocomplete="off">
+            </th>
+            <th></th>
+            <th></th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="q : ${questions}"
+            class="q-row"
+            th:data-id="${q.id}"
+            th:data-subject="${q.subject != null ? q.subject.name : ''}"
+            th:data-type="${q.type}"
+            th:data-type-label="${q.type.name() == 'MULTIPLE_CHOICE' ? 'Multiple choice' : (q.type.name() == 'TRUE_FALSE' ? 'True / False' : 'Fill in the blank')}">
+            <td class="col-subject" th:text="${q.subject != null ? q.subject.name : '—'}">Subject</td>
+            <td>
+                <span class="badge"
+                      th:text="${q.type.name() == 'MULTIPLE_CHOICE' ? 'Multiple choice'
+                              : (q.type.name() == 'TRUE_FALSE' ? 'True / False' : 'Fill in the blank')}">
+                    TYPE
+                </span>
+            </td>
+            <td class="col-text">
+                <textarea rows="2" class="inline-text"
+                          th:text="${q.questionText}"></textarea>
+            </td>
+            <td class="col-answer">
+                <input type="text" class="inline-answer"
+                       th:value="${q.correctAnswer}">
+            </td>
+            <td>
+                <button type="button" class="btn btn-sm save-row" disabled>Save</button>
+                <a th:href="@{|/admin/questions/${q.id}/edit|}" class="btn btn-sm">Edit</a>
+                <form th:action="@{|/admin/questions/${q.id}/delete|}" method="post"
+                      style="display:inline"
+                      onsubmit="return confirm('Delete this question?');">
+                    <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                </form>
+                <span class="row-status"></span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <div id="noMatch" class="empty-hint" style="display:none;">
+        No questions match your filter.
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script>
+    (function () {
+        const csrfToken  = document.querySelector('meta[name="_csrf"]')?.content || '';
+        const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+
+        const table = document.getElementById('questionsTable');
+        if (!table) return;
+
+        const rows = Array.from(table.querySelectorAll('tbody tr.q-row'));
+        const fSubject = document.getElementById('filterSubject');
+        const fType    = document.getElementById('filterType');
+        const fText    = document.getElementById('filterText');
+        const noMatch  = document.getElementById('noMatch');
+
+        // ── Filtering ───────────────────────────────────────────
+        function applyFilters() {
+            const subjectQ = fSubject.value.trim().toLowerCase();
+            const typeQ    = fType.value;
+            const textQ    = fText.value.trim().toLowerCase();
+
+            let shown = 0;
+            rows.forEach(row => {
+                const subject   = (row.dataset.subject || '').toLowerCase();
+                const type      = row.dataset.type || '';
+                const typeLabel = (row.dataset.typeLabel || '').toLowerCase();
+                const qText     = row.querySelector('.inline-text').value.toLowerCase();
+
+                // Subject: substring match.
+                const okSubject = !subjectQ || subject.includes(subjectQ);
+                // Type: exact match on the enum value from the dropdown.
+                const okType = !typeQ || type === typeQ;
+                // Question text: substring match against the text itself AND
+                //  the human-readable type label, so e.g. searching
+                //  "fill in the blank" in this box lists every FILL_BLANK
+                //  question even if "fill" isn't in the text.
+                const okText = !textQ
+                    || qText.includes(textQ)
+                    || typeLabel.includes(textQ);
+
+                const visible = okSubject && okType && okText;
+                row.style.display = visible ? '' : 'none';
+                if (visible) shown++;
+            });
+            noMatch.style.display = shown === 0 ? 'block' : 'none';
+        }
+
+        [fSubject, fType, fText].forEach(el => {
+            el.addEventListener('input', applyFilters);
+            el.addEventListener('change', applyFilters);
+        });
+
+        // ── Click-to-sort on column headers ─────────────────────
+        const tbody = table.querySelector('tbody');
+        const sortHeaders = table.querySelectorAll('th.sortable');
+        let sortKey = null;
+        let sortDir = 1; // 1 = asc, -1 = desc
+
+        function rowValue(row, key) {
+            switch (key) {
+                case 'subject': return (row.dataset.subject || '').toLowerCase();
+                case 'type':    return (row.dataset.typeLabel || '').toLowerCase();
+                case 'text':    return row.querySelector('.inline-text').value.toLowerCase();
+                case 'answer':  return row.querySelector('.inline-answer').value.toLowerCase();
+                default:        return '';
+            }
+        }
+
+        function applySort() {
+            if (!sortKey) return;
+            const sorted = rows.slice().sort((a, b) => {
+                const av = rowValue(a, sortKey);
+                const bv = rowValue(b, sortKey);
+                if (av < bv) return -1 * sortDir;
+                if (av > bv) return  1 * sortDir;
+                return 0;
+            });
+            sorted.forEach(r => tbody.appendChild(r));
+            sortHeaders.forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+                if (th.dataset.sort === sortKey) {
+                    th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+                }
+            });
+        }
+
+        sortHeaders.forEach(th => {
+            th.addEventListener('click', () => {
+                const key = th.dataset.sort;
+                if (sortKey === key) {
+                    sortDir = -sortDir;
+                } else {
+                    sortKey = key;
+                    sortDir = 1;
+                }
+                applySort();
+            });
+        });
+
+        // ── Auto-size question textareas so full text shows ────
+        function autosize(el) {
+            el.style.height = 'auto';
+            el.style.height = el.scrollHeight + 'px';
+        }
+
+        // ── Inline edit: dirty-track, save via fetch ──────────
+        rows.forEach(row => {
+            const textEl   = row.querySelector('.inline-text');
+            const answerEl = row.querySelector('.inline-answer');
+            const saveBtn  = row.querySelector('.save-row');
+            const statusEl = row.querySelector('.row-status');
+
+            const originalText   = textEl.value;
+            const originalAnswer = answerEl.value;
+            textEl.dataset.saved   = originalText;
+            answerEl.dataset.saved = originalAnswer;
+
+            // Auto-grow on load and on every keystroke.
+            autosize(textEl);
+            textEl.addEventListener('input', () => autosize(textEl));
+
+            function markDirty() {
+                const changed = textEl.value !== textEl.dataset.saved
+                             || answerEl.value !== answerEl.dataset.saved;
+                saveBtn.disabled = !changed;
+                row.querySelector('.col-text').classList.toggle('dirty', changed);
+                row.querySelector('.col-answer').classList.toggle('dirty', changed);
+                if (changed) {
+                    statusEl.textContent = '';
+                    statusEl.className = 'row-status';
+                }
+            }
+
+            textEl.addEventListener('input', markDirty);
+            answerEl.addEventListener('input', markDirty);
+
+            saveBtn.addEventListener('click', async () => {
+                const id = row.dataset.id;
+                const body = new URLSearchParams();
+                body.set('questionText', textEl.value);
+                body.set('correctAnswer', answerEl.value);
+
+                const headers = {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'Accept': 'application/json'
+                };
+                if (csrfToken) headers[csrfHeader] = csrfToken;
+
+                saveBtn.disabled = true;
+                statusEl.textContent = 'Saving…';
+                statusEl.className = 'row-status';
+
+                try {
+                    const res = await fetch(`/admin/questions/${id}/inline-update`, {
+                        method: 'POST',
+                        headers,
+                        body
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const data = await res.json();
+                    // Remember what the server now has so future edits
+                    // compare against the latest saved version.
+                    textEl.dataset.saved   = data.questionText;
+                    answerEl.dataset.saved = data.correctAnswer;
+                    textEl.value   = data.questionText;
+                    answerEl.value = data.correctAnswer;
+                    row.querySelector('.col-text').classList.remove('dirty');
+                    row.querySelector('.col-answer').classList.remove('dirty');
+                    statusEl.textContent = 'Saved';
+                    statusEl.className = 'row-status saved';
+                } catch (err) {
+                    statusEl.textContent = 'Save failed';
+                    statusEl.className = 'row-status error';
+                    saveBtn.disabled = false;
+                    console.error(err);
+                }
+            });
+        });
+    })();
+</script>
+</body>
+</html>

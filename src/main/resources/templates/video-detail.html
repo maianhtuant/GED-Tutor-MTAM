@@ -7,7 +7,7 @@
 <main class="container">
     <a th:href="@{/videos}" class="back-link">&larr; All videos</a>
     <h1 th:text="${video.title}">Video Title</h1>
-    <p><span class="badge" th:text="${video.subject}">MATH</span></p>
+    <p><span class="badge" th:text="${video.subject != null ? video.subject.name : ''}">Math</span></p>
 
     <div class="video-frame" th:if="${embedUrl != null}">
         <iframe th:src="${embedUrl}"

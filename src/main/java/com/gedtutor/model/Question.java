@@ -13,9 +13,15 @@ public class Question {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "homework_id", nullable = false)
-    private Homework homework;
+    /**
+     * Each question belongs to a subject. Homeworks draw from the pool of
+     * questions matching their own subject. Nullable for backward-compat
+     * with pre-existing rows that used to be tied to a homework (see the
+     * DB migration script in MIGRATION.sql).
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "subject_id")
+    private Subject subject;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -45,8 +51,8 @@ public class Question {
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
-    public Homework getHomework() { return homework; }
-    public void setHomework(Homework homework) { this.homework = homework; }
+    public Subject getSubject() { return subject; }
+    public void setSubject(Subject subject) { this.subject = subject; }
 
     public QuestionType getType() { return type; }
     public void setType(QuestionType type) { this.type = type; }

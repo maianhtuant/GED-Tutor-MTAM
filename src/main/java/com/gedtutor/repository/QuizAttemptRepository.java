@@ -12,4 +12,8 @@ public interface QuizAttemptRepository extends JpaRepository<QuizAttempt, Long> 
     List<QuizAttempt> findByStudentAndHomeworkOrderByAttemptNumberDesc(User student, Homework homework);
     long countByStudentAndHomework(User student, Homework homework);
     Optional<QuizAttempt> findTopByStudentAndHomeworkOrderByAttemptNumberDesc(User student, Homework homework);
+
+    /** Used when an admin deletes a homework — load attempts so JPA can cascade
+     *  their answers and quiz_attempt_questions rows before the homework FK is dropped. */
+    List<QuizAttempt> findByHomework(Homework homework);
 }

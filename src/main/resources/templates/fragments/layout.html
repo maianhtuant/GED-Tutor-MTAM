@@ -4,6 +4,11 @@
 <head th:fragment="head(title)">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- CSRF token exposed to JS so fetch() POSTs can pass Spring Security's
+         CSRF filter. Thymeleaf's form helper auto-injects it for <form>s,
+         but fetch requests must read these meta tags and set the header. -->
+    <meta name="_csrf" th:content="${_csrf != null ? _csrf.token : ''}"/>
+    <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : ''}"/>
     <title th:text="${title} ?: 'GED Tutor'">GED Tutor</title>
     <link rel="stylesheet" th:href="@{/css/styles.css}">
 </head>

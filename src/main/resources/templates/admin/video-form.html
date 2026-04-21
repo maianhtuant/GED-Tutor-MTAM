@@ -27,9 +27,11 @@
         </label>
 
         <label>Subject
-            <select th:field="*{subject}" required>
-                <option th:each="s : ${subjects}" th:value="${s}" th:text="${s}"></option>
+            <select th:field="*{subjectId}" required>
+                <option value="">— choose a subject —</option>
+                <option th:each="s : ${subjects}" th:value="${s.id}" th:text="${s.name}"></option>
             </select>
+            <span class="field-error" th:if="${#fields.hasErrors('subjectId')}" th:errors="*{subjectId}"></span>
         </label>
 
         <label>Visibility

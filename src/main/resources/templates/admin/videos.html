@@ -7,7 +7,13 @@
 <main class="container">
     <div class="page-head">
         <h1>Videos</h1>
-        <a th:href="@{/admin/videos/new}" class="btn btn-primary">+ New video</a>
+        <div>
+            <form th:action="@{/admin/videos/all-private}" method="post" style="display:inline"
+                  onsubmit="return confirm('Set every video to PRIVATE?');">
+                <button type="submit" class="btn">Set all private</button>
+            </form>
+            <a th:href="@{/admin/videos/new}" class="btn btn-primary">+ New video</a>
+        </div>
     </div>
 
     <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
@@ -21,7 +27,7 @@
             <td>
                 <a th:href="@{|/admin/videos/${v.id}/edit|}" th:text="${v.title}">Title</a>
             </td>
-            <td th:text="${v.subject}">MATH</td>
+            <td th:text="${v.subject != null ? v.subject.name : '—'}">Math</td>
             <td>
                 <form th:action="@{|/admin/videos/${v.id}/visibility|}" method="post" style="display:inline">
                     <select name="visibility" onchange="this.form.submit()">

@@ -3,30 +3,40 @@ package com.gedtutor.service;
 import com.gedtutor.dto.QuestionForm;
 import com.gedtutor.model.*;
 import com.gedtutor.repository.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class QuizService {
 
-    private static final int MAX_ATTEMPTS = 3;
+    private static final Logger log = LoggerFactory.getLogger(QuizService.class);
+    // Unlimited attempts. Set this to a positive number if you want a per-student cap.
+    private static final int MAX_ATTEMPTS = Integer.MAX_VALUE;
 
     private final QuestionRepository questionRepo;
     private final QuizAttemptRepository attemptRepo;
     private final QuizAnswerRepository answerRepo;
     private final HomeworkRepository homeworkRepo;
+    private final SubjectRepository subjectRepo;
 
     public QuizService(QuestionRepository questionRepo,
                        QuizAttemptRepository attemptRepo,
                        QuizAnswerRepository answerRepo,
-                       HomeworkRepository homeworkRepo) {
+                       HomeworkRepository homeworkRepo,
+                       SubjectRepository subjectRepo) {
         this.questionRepo = questionRepo;
         this.attemptRepo = attemptRepo;
         this.answerRepo = answerRepo;
         this.homeworkRepo = homeworkRepo;
+        this.subjectRepo = subjectRepo;
     }
 
     // ── Questions ──────────────────────────────────────────────
@@ -35,15 +45,37 @@ public class QuizService {
         return questionRepo.findByHomeworkWithChoices(hw);
     }
 
+    /** Every question in the system, with its subject pre-loaded. Used by
+     *  the global /admin/questions list page. */
+    public List<Question> listAllQuestions() {
+        return questionRepo.findAllWithSubject();
+    }
+
+    /** All questions in the bank for a subject. Used by HomeworkService to
+     *  randomly pick N questions when a homework with poolSize is saved. */
+    public List<Question> getQuestionsBySubject(Subject subject) {
+        return questionRepo.findBySubject(subject);
+    }
+
     public Question findQuestionById(Long id) {
         return questionRepo.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Question not found: " + id));
     }
 
+    /**
+     * Fetch a question with its choices + subject eagerly loaded, so the
+     * admin edit form can iterate them after the transaction closes
+     * (open-in-view=off).
+     */
+    public Question findQuestionByIdWithChoices(Long id) {
+        return questionRepo.findByIdWithChoices(id)
+                .orElseThrow(() -> new IllegalArgumentException("Question not found: " + id));
+    }
+
     @Transactional
-    public void saveQuestion(Long homeworkId, QuestionForm form) {
-        Homework hw = homeworkRepo.findById(homeworkId)
-                .orElseThrow(() -> new IllegalArgumentException("Homework not found"));
+    public void saveQuestion(Long subjectId, QuestionForm form) {
+        Subject subject = subjectRepo.findById(subjectId)
+                .orElseThrow(() -> new IllegalArgumentException("Subject not found"));
 
         Question q;
         if (form.getId() != null) {
@@ -51,14 +83,17 @@ public class QuizService {
             q.getChoices().clear();
         } else {
             q = new Question();
-            q.setHomework(hw);
-            int count = (int) questionRepo.countByHomework(hw);
-            q.setOrderIndex(form.getOrderIndex() > 0 ? form.getOrderIndex() : count);
+            q.setOrderIndex(form.getOrderIndex() > 0 ? form.getOrderIndex() : 0);
         }
 
+        q.setSubject(subject);
         q.setType(form.getType());
         q.setQuestionText(form.getQuestionText());
-        q.setCorrectAnswer(form.getCorrectAnswer().trim());
+        String correctAnswer = form.getCorrectAnswer();
+        if (correctAnswer == null || correctAnswer.isBlank()) {
+            throw new IllegalArgumentException("Correct answer is required.");
+        }
+        q.setCorrectAnswer(correctAnswer.trim());
         q.setExplanation(form.getExplanation());
 
         if (form.getType() == QuestionType.MULTIPLE_CHOICE) {
@@ -78,6 +113,23 @@ public class QuizService {
     @Transactional
     public void deleteQuestion(Long id) {
         questionRepo.deleteById(id);
+    }
+
+    /**
+     * Inline-update just the question text and correct answer for a bank
+     * question — used by the per-row save on the /admin/questions table.
+     * Leaves subject, type, choices, and explanation untouched.
+     */
+    @Transactional
+    public Question updateQuestionInline(Long id, String questionText, String correctAnswer) {
+        Question q = findQuestionById(id);
+        if (questionText != null && !questionText.isBlank()) {
+            q.setQuestionText(questionText.trim());
+        }
+        if (correctAnswer != null && !correctAnswer.isBlank()) {
+            q.setCorrectAnswer(correctAnswer.trim());
+        }
+        return questionRepo.save(q);
     }
 
     // ── Quiz Attempts ──────────────────────────────────────────
@@ -105,12 +157,60 @@ public class QuizService {
             throw new IllegalStateException("Maximum attempts reached");
         }
         long count = attemptRepo.countByStudentAndHomework(student, hw);
+
+        // Randomly sample from the homework's question pool if the admin
+        // configured a smaller-than-pool cap; otherwise use all.
+        List<Question> pool = questionRepo.findByHomeworkWithChoices(hw);
+        Integer limit = hw.getQuestionsPerAttempt();
+        List<Question> selected;
+        if (limit != null && limit > 0 && limit < pool.size()) {
+            List<Question> shuffled = new ArrayList<>(pool);
+            Collections.shuffle(shuffled);
+            selected = shuffled.subList(0, limit);
+        } else {
+            selected = pool;
+        }
+
         QuizAttempt attempt = new QuizAttempt();
         attempt.setStudent(student);
         attempt.setHomework(hw);
         attempt.setAttemptNumber((int) count + 1);
-        attempt.setTotalQuestions((int) questionRepo.countByHomework(hw));
+        attempt.setTotalQuestions(selected.size());
+        attempt.setQuestionIds(selected.stream()
+                .map(Question::getId)
+                .collect(Collectors.toList()));
         return attemptRepo.save(attempt);
+    }
+
+    /**
+     * Returns the questions for a given attempt, in the order they were
+     * selected at startAttempt. Falls back to the homework's full pool if
+     * the attempt wasn't given a specific subset (older attempts).
+     *
+     * Uses a join-fetch query so the Question.choices collection is fully
+     * initialized before the transaction closes (open-in-view=false).
+     */
+    @Transactional(readOnly = true)
+    public List<Question> getQuestionsForAttempt(QuizAttempt attempt) {
+        List<Long> ids = attempt.getQuestionIds();
+        if (ids == null || ids.isEmpty()) {
+            return getQuestions(attempt.getHomework());
+        }
+        // Fetch in one query, then reorder to match the stored sequence.
+        List<Question> fetched = questionRepo.findByIdInWithChoices(ids);
+        java.util.Map<Long, Question> byId = new java.util.HashMap<>();
+        for (Question q : fetched) byId.put(q.getId(), q);
+        List<Question> ordered = new ArrayList<>(ids.size());
+        for (Long qid : ids) {
+            Question q = byId.get(qid);
+            if (q != null) ordered.add(q);
+        }
+        return ordered;
+    }
+
+    public QuizAttempt findAttemptById(Long id) {
+        return attemptRepo.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Attempt not found: " + id));
     }
 
     @Transactional
@@ -143,14 +243,34 @@ public class QuizService {
     }
 
     private boolean checkAnswer(Question q, String studentAnswer) {
-        if (studentAnswer == null || studentAnswer.isBlank()) return false;
+        if (studentAnswer == null || studentAnswer.isBlank()) {
+            log.info("[QUIZ] qid={} REJECT: blank student answer", q.getId());
+            return false;
+        }
+        if (q.getCorrectAnswer() == null || q.getCorrectAnswer().isBlank()) {
+            log.info("[QUIZ] qid={} REJECT: blank correctAnswer in DB", q.getId());
+            return false;
+        }
         String correct = q.getCorrectAnswer().trim().toLowerCase();
         String given = studentAnswer.trim().toLowerCase();
+        if (correct.isEmpty() || given.isEmpty()) {
+            log.info("[QUIZ] qid={} REJECT: empty after trim", q.getId());
+            return false;
+        }
 
-        return switch (q.getType()) {
+        boolean result = switch (q.getType()) {
             case MULTIPLE_CHOICE -> correct.equals(given);
             case TRUE_FALSE -> correct.equals(given);
+            // For fill-in-the-blank we accept exact matches as well as near-matches.
+            // The empty-string guards above prevent "anything contains empty" from
+            // becoming a wildcard.
             case FILL_BLANK -> correct.equals(given) || correct.contains(given) || given.contains(correct);
         };
+
+        // Log as single-quoted strings with lengths so hidden whitespace / unicode is visible.
+        log.info("[QUIZ] qid={} type={} correct='{}' (len={}) given='{}' (len={}) → {}",
+                q.getId(), q.getType(), correct, correct.length(),
+                given, given.length(), result ? "MATCH" : "NO MATCH");
+        return result;
     }
 }

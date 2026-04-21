@@ -31,7 +31,9 @@
 
     <!-- Attempt info -->
     <div style="margin-bottom:1rem; color:#666;">
-        Attempts: <strong th:text="${attemptCount} + ' / ' + ${maxAttempts}">0/3</strong>
+        Attempts: <strong
+            th:text="${maxAttempts >= 2147483647} ? ${attemptCount} : (${attemptCount} + ' / ' + ${maxAttempts})">0</strong>
+        <span th:if="${maxAttempts >= 2147483647}" class="muted">(unlimited)</span>
     </div>
 
     <!-- Not started yet -->
@@ -41,7 +43,14 @@
         </div>
 
         <div th:if="${!#lists.isEmpty(questions) and canAttempt}">
-            <p th:text="'This quiz has ' + ${#lists.size(questions)} + ' questions. You have ' + (${maxAttempts} - ${attemptCount}) + ' attempt(s) remaining.'"></p>
+            <p th:if="${hw.questionsPerAttempt != null and hw.questionsPerAttempt > 0 and hw.questionsPerAttempt lt #lists.size(questions)}"
+               th:text="'This quiz draws ' + ${hw.questionsPerAttempt} + ' random questions from a pool of ' + ${#lists.size(questions)} + '.'"></p>
+            <p th:if="${maxAttempts >= 2147483647}"
+               th:text="${hw.questionsPerAttempt != null and hw.questionsPerAttempt > 0 and hw.questionsPerAttempt lt #lists.size(questions)}
+                        ? 'You can retake it as many times as you like — a new random set each time.'
+                        : 'This quiz has ' + ${#lists.size(questions)} + ' questions. You can retake it as many times as you like.'"></p>
+            <p th:unless="${maxAttempts >= 2147483647}"
+               th:text="'This quiz has ' + ${#lists.size(questions)} + ' questions. You have ' + (${maxAttempts} - ${attemptCount}) + ' attempt(s) remaining.'"></p>
             <form th:action="@{|/quiz/${hw.id}/start|}" method="post">
                 <button type="submit" class="btn btn-primary">Start Quiz</button>
             </form>
@@ -56,8 +65,8 @@
             <h3>Your Previous Attempts</h3>
             <div th:each="a : ${attempts}" class="attempt-row">
                 <span>Attempt #<span th:text="${a.attemptNumber}"></span></span>
-                <span th:text="${a.score} + ' / ' + ${a.totalQuestions} + ' (' + (${a.totalQuestions > 0} ? ${a.score * 100 / a.totalQuestions} : 0) + '%)'"></span>
-                <span class="muted" th:text="${#temporals.format(a.completedAt, 'MMM d, yyyy HH:mm')}"></span>
+                <span th:text="${(a.score != null ? a.score : 0)} + ' / ' + ${(a.totalQuestions != null ? a.totalQuestions : 0)} + ' (' + (${a.score != null and a.totalQuestions != null and a.totalQuestions > 0} ? ${a.score * 100 / a.totalQuestions} : 0) + '%)'"></span>
+                <span class="muted" th:text="${a.completedAt != null ? #temporals.format(a.completedAt, 'MMM d, yyyy HH:mm') : 'In progress'}"></span>
             </div>
         </div>
     </div>
@@ -133,6 +142,11 @@
     const totalQuestions = /*[[${#lists.size(questions)}]]*/ 0;
     let answered = 0;
 
+    // CSRF token injected by the layout fragment. Spring Security rejects POSTs
+    // without it with 403 Forbidden.
+    const csrfToken  = document.querySelector('meta[name="_csrf"]')?.content || '';
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+
     function updateProgress() {
         const pct = totalQuestions > 0 ? (answered / totalQuestions * 100) : 0;
         document.getElementById('progressFill').style.width = pct + '%';
@@ -153,16 +167,25 @@
     }
 
     function submitAnswer(qid, attemptId, answer) {
+        const headers = {'Content-Type': 'application/x-www-form-urlencoded'};
+        if (csrfToken) headers[csrfHeader] = csrfToken;
         fetch('/quiz/attempt/' + attemptId + '/answer', {
             method: 'POST',
-            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            headers: headers,
             body: 'questionId=' + qid + '&answer=' + encodeURIComponent(answer)
         })
-        .then(r => r.json())
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
         .then(data => {
             showFeedback(qid, data.correct, data.correctAnswer, data.explanation);
             answered++;
             updateProgress();
+        })
+        .catch(err => {
+            console.error('submitAnswer failed:', err);
+            alert('Could not submit answer: ' + err.message + '. Try refreshing and logging in again.');
         });
     }
 
@@ -202,8 +225,13 @@
     function finishQuiz() {
         const attemptId = document.querySelector('[data-attemptid]')?.dataset?.attemptid;
         if (!attemptId) return;
-        fetch('/quiz/attempt/' + attemptId + '/complete', { method: 'POST' })
-        .then(r => r.json())
+        const headers = {};
+        if (csrfToken) headers[csrfHeader] = csrfToken;
+        fetch('/quiz/attempt/' + attemptId + '/complete', { method: 'POST', headers: headers })
+        .then(r => {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
         .then(data => {
             const box = document.getElementById('scoreBox');
             document.getElementById('scoreText').textContent = data.score + ' / ' + data.total;

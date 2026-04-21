@@ -16,9 +16,11 @@
         </label>
 
         <label>Subject
-            <select th:field="*{subject}" required>
-                <option th:each="s : ${subjects}" th:value="${s}" th:text="${s}"></option>
+            <select th:field="*{subjectId}" required>
+                <option value="">— choose a subject —</option>
+                <option th:each="s : ${subjects}" th:value="${s.id}" th:text="${s.name}"></option>
             </select>
+            <span class="field-error" th:if="${#fields.hasErrors('subjectId')}" th:errors="*{subjectId}"></span>
         </label>
 
         <label>Related video (optional)
@@ -34,6 +36,16 @@
 
         <label>Instructions
             <textarea th:field="*{instructions}" rows="8"></textarea>
+        </label>
+
+        <label>Total questions (pool size)
+            <input type="number" th:field="*{poolSize}" min="0" placeholder="e.g. 10">
+            <small class="muted">How many questions you plan to add for this homework. After saving you'll be taken to a form to enter each one, showing "Question X of Y". Leave blank if you don't want a target.</small>
+        </label>
+
+        <label>Questions per attempt (optional)
+            <input type="number" th:field="*{questionsPerAttempt}" min="0" placeholder="Leave blank to use all">
+            <small class="muted">If set, each attempt randomly picks this many questions from the pool. Leave blank or 0 for "use all".</small>
         </label>
 
         <label class="inline">

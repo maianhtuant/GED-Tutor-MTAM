@@ -14,13 +14,14 @@
 
     <table class="table">
         <thead>
-        <tr><th>Title</th><th>Subject</th><th>Due</th><th>Published</th><th>Actions</th></tr>
+        <tr><th>Title</th><th>Subject</th><th>Due</th><th>Q / attempt</th><th>Published</th><th>Actions</th></tr>
         </thead>
         <tbody>
         <tr th:each="hw : ${homeworkList}">
             <td th:text="${hw.title}">Title</td>
-            <td th:text="${hw.subject}">MATH</td>
+            <td th:text="${hw.subject != null ? hw.subject.name : '—'}">Math</td>
             <td th:text="${hw.dueDate != null ? #temporals.format(hw.dueDate,'MMM d, yyyy HH:mm') : '—'}">—</td>
+            <td th:text="${hw.questionsPerAttempt != null and hw.questionsPerAttempt > 0 ? hw.questionsPerAttempt : 'all'}">all</td>
             <td th:text="${hw.published ? 'Yes' : 'No'}">Yes</td>
             <td>
                 <a th:href="@{|/admin/homework/${hw.id}/edit|}" class="btn">Edit</a>

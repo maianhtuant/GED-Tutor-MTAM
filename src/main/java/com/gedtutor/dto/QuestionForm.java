@@ -11,6 +11,11 @@ public class QuestionForm {
 
     private Long id;
 
+    /** Subject this question belongs to. Required by the global
+     *  /admin/questions flow — questions live in a bank indexed by subject,
+     *  and homeworks later pick from that bank. */
+    private Long subjectId;
+
     @NotNull
     private QuestionType type;
 
@@ -36,6 +41,9 @@ public class QuestionForm {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Long getSubjectId() { return subjectId; }
+    public void setSubjectId(Long subjectId) { this.subjectId = subjectId; }
 
     public QuestionType getType() { return type; }
     public void setType(QuestionType type) { this.type = type; }

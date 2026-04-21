@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Subject form')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container narrow">
+    <a th:href="@{/admin/subjects}" class="back-link">&larr; Back to subjects</a>
+    <h1 th:text="${form.id != null ? 'Edit subject' : 'New subject'}">Subject</h1>
+
+    <div class="alert alert-error" th:if="${error}" th:text="${error}"></div>
+
+    <form th:action="${form.id != null} ? @{|/admin/subjects/${form.id}/edit|} : @{/admin/subjects/new}"
+          th:object="${form}" method="post" class="card">
+
+        <label>Name
+            <input type="text" th:field="*{name}" required maxlength="60"
+                   placeholder="e.g. Math, ESL, Writing">
+            <span class="field-error" th:if="${#fields.hasErrors('name')}" th:errors="*{name}"></span>
+        </label>
+
+        <label>Description (optional)
+            <textarea th:field="*{description}" rows="3" maxlength="500"
+                      placeholder="A short description shown on the admin subjects page"></textarea>
+            <span class="field-error" th:if="${#fields.hasErrors('description')}" th:errors="*{description}"></span>
+        </label>
+
+        <label>Display order
+            <input type="number" th:field="*{displayOrder}" min="0">
+        </label>
+
+        <label class="inline">
+            <input type="checkbox" th:field="*{active}">
+            Active (show in new-content dropdowns)
+        </label>
+
+        <button type="submit" class="btn btn-primary">Save</button>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

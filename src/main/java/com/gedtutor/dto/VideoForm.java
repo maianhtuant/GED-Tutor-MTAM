@@ -1,6 +1,5 @@
 package com.gedtutor.dto;
 
-import com.gedtutor.model.GedSubject;
 import com.gedtutor.model.VideoVisibility;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -21,7 +20,7 @@ public class VideoForm {
     private String videoUrl;
 
     @NotNull
-    private GedSubject subject;
+    private Long subjectId;
 
     @NotNull
     private VideoVisibility visibility;
@@ -40,8 +39,8 @@ public class VideoForm {
     public String getVideoUrl() { return videoUrl; }
     public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }
 
-    public GedSubject getSubject() { return subject; }
-    public void setSubject(GedSubject subject) { this.subject = subject; }
+    public Long getSubjectId() { return subjectId; }
+    public void setSubjectId(Long subjectId) { this.subjectId = subjectId; }
 
     public VideoVisibility getVisibility() { return visibility; }
     public void setVisibility(VideoVisibility visibility) { this.visibility = visibility; }

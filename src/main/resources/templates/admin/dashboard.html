@@ -22,6 +22,16 @@
             <p>Homework</p>
             <a th:href="@{/admin/homework}">Manage &rarr;</a>
         </div>
+        <div class="stat">
+            <h2 th:text="${questionCount}">0</h2>
+            <p>Questions</p>
+            <a th:href="@{/admin/questions}">Manage &rarr;</a>
+        </div>
+        <div class="stat">
+            <h2 th:text="${subjectCount}">0</h2>
+            <p>Subjects</p>
+            <a th:href="@{/admin/subjects}">Manage &rarr;</a>
+        </div>
     </div>
 </main>
 

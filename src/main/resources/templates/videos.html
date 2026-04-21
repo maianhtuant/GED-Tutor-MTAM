@@ -11,12 +11,12 @@
 
     <form method="get" th:action="@{/videos}" class="filter-bar">
         <label>Subject:
-            <select name="subject" onchange="this.form.submit()">
+            <select name="subjectId" onchange="this.form.submit()">
                 <option value="">All</option>
                 <option th:each="s : ${subjects}"
-                        th:value="${s}"
-                        th:text="${s}"
-                        th:selected="${selectedSubject != null and selectedSubject == s}"></option>
+                        th:value="${s.id}"
+                        th:text="${s.name}"
+                        th:selected="${selectedSubjectId != null and selectedSubjectId == s.id}"></option>
             </select>
         </label>
     </form>
@@ -32,7 +32,7 @@
                 <span>Watch</span>
             </div>
             <div class="card-body">
-                <span class="badge" th:text="${v.subject}">MATH</span>
+                <span class="badge" th:text="${v.subject != null ? v.subject.name : ''}">Math</span>
                 <h3 th:text="${v.title}">Title</h3>
                 <p class="muted" th:text="${#temporals.format(v.createdAt, 'MMM d, yyyy')}">Date</p>
             </div>
