@@ -5,6 +5,7 @@ import com.gedtutor.model.Subject;
 import com.gedtutor.model.User;
 import com.gedtutor.model.Video;
 import com.gedtutor.model.VideoVisibility;
+import com.gedtutor.repository.HomeworkRepository;
 import com.gedtutor.repository.VideoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,13 +18,16 @@ public class VideoService {
     private final VideoRepository videoRepository;
     private final VideoUrlParser urlParser;
     private final SubjectService subjectService;
+    private final HomeworkRepository homeworkRepository;
 
     public VideoService(VideoRepository videoRepository,
                         VideoUrlParser urlParser,
-                        SubjectService subjectService) {
+                        SubjectService subjectService,
+                        HomeworkRepository homeworkRepository) {
         this.videoRepository = videoRepository;
         this.urlParser = urlParser;
         this.subjectService = subjectService;
+        this.homeworkRepository = homeworkRepository;
     }
 
     public List<Video> listPublic() {
@@ -90,6 +94,13 @@ public class VideoService {
 
     @Transactional
     public void delete(Long id) {
+        Video video = findById(id);
+        // Unlink any homework that references this video before deleting,
+        // otherwise the FK constraint on homework.video_id blocks the delete.
+        homeworkRepository.findByVideo(video).forEach(hw -> {
+            hw.setVideo(null);
+            homeworkRepository.save(hw);
+        });
         videoRepository.deleteById(id);
     }
 
