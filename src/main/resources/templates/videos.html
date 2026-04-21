@@ -1,45 +1,141 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Video Lessons')}"></head>
+<style>
+  /* ── Tab bar ─────────────────────────────────────────────── */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 1.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+
+  .tab-btn {
+    padding: 0.65rem 1.3rem;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: #6b7280;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color 0.15s, border-color 0.15s;
+    text-decoration: none;
+  }
+  .tab-btn:hover { color: #111; }
+  .tab-btn.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+    font-weight: 600;
+  }
+
+  /* ── Video grid ───────────────────────────────────────────── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  .video-count {
+    font-size: 0.85rem;
+    color: #888;
+    margin-bottom: 1rem;
+  }
+</style>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container">
     <h1>Video Lessons</h1>
-
     <div class="alert alert-error" th:if="${error}" th:text="${error}"></div>
 
-    <form method="get" th:action="@{/videos}" class="filter-bar">
-        <label>Subject:
-            <select name="subjectId" onchange="this.form.submit()">
-                <option value="">All</option>
-                <option th:each="s : ${subjects}"
-                        th:value="${s.id}"
-                        th:text="${s.name}"
-                        th:selected="${selectedSubjectId != null and selectedSubjectId == s.id}"></option>
-            </select>
-        </label>
-    </form>
+    <!-- ── Tab bar ── -->
+    <div class="tab-bar" id="tabBar">
+        <!-- "All" tab -->
+        <button class="tab-btn" data-tab="all">All</button>
+        <!-- One tab per subject -->
+        <button th:each="s : ${subjects}"
+                class="tab-btn"
+                th:data-tab="${'tab-' + s.id}"
+                th:text="${s.name}">Math</button>
+    </div>
 
-    <div th:if="${#lists.isEmpty(videos)}" class="empty">No videos yet. Check back soon!</div>
+    <!-- ── "All" panel ── -->
+    <div class="tab-panel" id="all">
+        <p class="video-count" th:text="${#lists.size(allVideos)} + ' video(s)'"></p>
+        <div th:if="${#lists.isEmpty(allVideos)}" class="empty">No videos yet. Check back soon!</div>
+        <div class="grid">
+            <a th:each="v : ${allVideos}" th:href="@{|/videos/${v.id}|}" class="video-card">
+                <div class="thumb"
+                     th:if="${v.provider == 'youtube' and v.embedId != null}"
+                     th:style="|background-image: url('https://img.youtube.com/vi/${v.embedId}/hqdefault.jpg')|"></div>
+                <div class="thumb" th:unless="${v.provider == 'youtube' and v.embedId != null}">
+                    <span>Watch</span>
+                </div>
+                <div class="card-body">
+                    <span class="badge" th:text="${v.subject != null ? v.subject.name : ''}">Math</span>
+                    <h3 th:text="${v.title}">Title</h3>
+                    <p class="muted" th:text="${#temporals.format(v.createdAt, 'MMM d, yyyy')}">Date</p>
+                </div>
+            </a>
+        </div>
+    </div>
 
-    <div class="grid">
-        <a th:each="v : ${videos}" th:href="@{|/videos/${v.id}|}" class="video-card">
-            <div class="thumb"
-                 th:if="${v.provider == 'youtube' and v.embedId != null}"
-                 th:style="|background-image: url('https://img.youtube.com/vi/${v.embedId}/hqdefault.jpg')|"></div>
-            <div class="thumb" th:unless="${v.provider == 'youtube' and v.embedId != null}">
-                <span>Watch</span>
-            </div>
-            <div class="card-body">
-                <span class="badge" th:text="${v.subject != null ? v.subject.name : ''}">Math</span>
-                <h3 th:text="${v.title}">Title</h3>
-                <p class="muted" th:text="${#temporals.format(v.createdAt, 'MMM d, yyyy')}">Date</p>
-            </div>
-        </a>
+    <!-- ── Per-subject panels ── -->
+    <div th:each="s : ${subjects}"
+         class="tab-panel"
+         th:id="'tab-' + ${s.id}">
+        <p class="video-count"
+           th:text="${videosBySubject[s.id] != null ? #lists.size(videosBySubject[s.id]) : 0} + ' video(s)'"></p>
+        <div th:if="${videosBySubject[s.id] == null or #lists.isEmpty(videosBySubject[s.id])}" class="empty">
+            No videos in this subject yet.
+        </div>
+        <div class="grid" th:if="${videosBySubject[s.id] != null and !#lists.isEmpty(videosBySubject[s.id])}">
+            <a th:each="v : ${videosBySubject[s.id]}" th:href="@{|/videos/${v.id}|}" class="video-card">
+                <div class="thumb"
+                     th:if="${v.provider == 'youtube' and v.embedId != null}"
+                     th:style="|background-image: url('https://img.youtube.com/vi/${v.embedId}/hqdefault.jpg')|"></div>
+                <div class="thumb" th:unless="${v.provider == 'youtube' and v.embedId != null}">
+                    <span>Watch</span>
+                </div>
+                <div class="card-body">
+                    <span class="badge" th:text="${v.subject != null ? v.subject.name : ''}">Math</span>
+                    <h3 th:text="${v.title}">Title</h3>
+                    <p class="muted" th:text="${#temporals.format(v.createdAt, 'MMM d, yyyy')}">Date</p>
+                </div>
+            </a>
+        </div>
     </div>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script>
+(function () {
+    const tabBar   = document.getElementById('tabBar');
+    const tabBtns  = Array.from(tabBar.querySelectorAll('.tab-btn'));
+    const panels   = Array.from(document.querySelectorAll('.tab-panel'));
+
+    function activate(tabId) {
+        tabBtns.forEach(b  => b.classList.toggle('active', b.dataset.tab === tabId));
+        panels.forEach(p   => p.classList.toggle('active', p.id === tabId));
+        // Remember the chosen tab across page reloads
+        try { sessionStorage.setItem('videosTab', tabId); } catch(_) {}
+    }
+
+    tabBtns.forEach(btn => {
+        btn.addEventListener('click', () => activate(btn.dataset.tab));
+    });
+
+    // Restore last tab, default to "all"
+    let saved = 'all';
+    try { saved = sessionStorage.getItem('videosTab') || 'all'; } catch(_) {}
+    // Validate the saved tab still exists (subject may have been deleted)
+    if (!panels.find(p => p.id === saved)) saved = 'all';
+    activate(saved);
+})();
+</script>
 </body>
 </html>

@@ -1,5 +1,6 @@
 package com.gedtutor.controller;
 
+import com.gedtutor.model.Subject;
 import com.gedtutor.model.Video;
 import com.gedtutor.model.VideoVisibility;
 import com.gedtutor.service.SubjectService;
@@ -11,6 +12,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
 @Controller
 @RequestMapping("/videos")
@@ -26,13 +31,18 @@ public class VideoController {
 
     @GetMapping
     public String list(@RequestParam(required = false) Long subjectId, Model model) {
-        model.addAttribute("videos", videoService.listPublicBySubject(subjectId));
-        // Show ALL subjects in the filter dropdown (including deactivated ones) so
-        // that videos under a deactivated subject are still discoverable on the
-        // public videos page. Deactivation only hides a subject from the admin
-        // "new video / new homework" pickers.
-        model.addAttribute("subjects", subjectService.listAll());
-        model.addAttribute("selectedSubjectId", subjectId);
+        List<Subject> subjects = subjectService.listAll();
+        List<Video>   allVideos = videoService.listPublic();
+
+        // Build a map: subjectId → videos for that subject (used by the tab panels)
+        Map<Long, List<Video>> videosBySubject = new LinkedHashMap<>();
+        for (Subject s : subjects) {
+            videosBySubject.put(s.getId(), videoService.listPublicBySubject(s.getId()));
+        }
+
+        model.addAttribute("subjects",        subjects);
+        model.addAttribute("allVideos",        allVideos);
+        model.addAttribute("videosBySubject",  videosBySubject);
         return "videos";
     }
 
