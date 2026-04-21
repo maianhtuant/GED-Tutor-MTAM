@@ -16,11 +16,23 @@
         </label>
 
         <label>Subject
-            <select th:field="*{subjectId}" required>
+            <select th:field="*{subjectId}" required id="subjectSelect">
                 <option value="">— choose a subject —</option>
-                <option th:each="s : ${subjects}" th:value="${s.id}" th:text="${s.name}"></option>
+                <option th:each="s : ${subjects}"
+                        th:value="${s.id}"
+                        th:text="${s.name}"
+                        th:attr="data-name=${s.name}"></option>
             </select>
             <span class="field-error" th:if="${#fields.hasErrors('subjectId')}" th:errors="*{subjectId}"></span>
+        </label>
+
+        <label>Sub-subject / Category
+            <input type="text" th:field="*{category}" id="categoryInput"
+                   list="categoryList"
+                   placeholder="e.g. GED, Calculus 1, Pre-Calculus…"
+                   autocomplete="off">
+            <datalist id="categoryList"></datalist>
+            <small class="muted">Groups this homework inside its subject tab on the student page.</small>
         </label>
 
         <label>Related video (optional)
@@ -58,5 +70,24 @@
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
+<script>
+    const CATEGORIES = {
+        'Math':          ['GED', 'Pre-Calculus', 'Calculus 1', 'Calculus 2', 'Calculus 3', 'Linear Algebra', 'Differential Equations', 'Statistics', 'Trigonometry'],
+        'Science':       ['GED', 'Biology', 'Chemistry', 'Physics', 'Earth Science'],
+        'Social Studies':['GED', 'US History', 'World History', 'Civics', 'Geography', 'Economics'],
+        'Language Arts': ['GED', 'Reading', 'Writing', 'Grammar', 'Essay Writing', 'Literature'],
+        'Reasoning':     ['GED', 'Critical Thinking', 'Logic', 'Problem Solving']
+    };
+    const subjectSelect = document.getElementById('subjectSelect');
+    const categoryList  = document.getElementById('categoryList');
+    function updateSuggestions() {
+        const opt  = subjectSelect.options[subjectSelect.selectedIndex];
+        const name = opt ? (opt.dataset.name || opt.text) : '';
+        const opts = CATEGORIES[name] || ['GED'];
+        categoryList.innerHTML = opts.map(o => `<option value="${o}"></option>`).join('');
+    }
+    subjectSelect.addEventListener('change', updateSuggestions);
+    updateSuggestions();
+</script>
 </body>
 </html>

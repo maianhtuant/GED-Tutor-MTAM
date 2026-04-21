@@ -1,36 +1,318 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Homework')}"></head>
+<style>
+  /* ── Tab bar ──────────────────────────────────────────────── */
+  .tab-bar {
+    display: flex;
+    gap: 0;
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 1.75rem;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .tab-bar::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 0.65rem 1.3rem;
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: #6b7280;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    margin-bottom: -2px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: color .15s, border-color .15s;
+  }
+  .tab-btn:hover { color: #111; }
+  .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
+
+  /* ── Panels ───────────────────────────────────────────────── */
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Search ───────────────────────────────────────────────── */
+  .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.5rem;
+  }
+  .search-bar input {
+    flex: 1;
+    padding: 0.55rem 0.9rem;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    font-size: 0.95rem;
+  }
+  .search-bar input:focus { outline: 2px solid #2563eb; border-color: #2563eb; }
+  .search-count { font-size: 0.85rem; color: #888; white-space: nowrap; }
+
+  /* ── Sub-subject sections ─────────────────────────────────── */
+  .category-section { margin-bottom: 2.5rem; }
+  .category-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #374151;
+    margin: 0 0 0.9rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 2px solid #e5e7eb;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .category-title .cat-count {
+    font-size: 0.78rem;
+    font-weight: 500;
+    background: #e5e7eb;
+    color: #6b7280;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+  }
+
+  /* ── Homework cards ───────────────────────────────────────── */
+  .hw-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; }
+  .hw-card {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    transition: box-shadow .15s, border-color .15s;
+    text-decoration: none;
+    color: inherit;
+  }
+  .hw-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.08); border-color: #c7d2fe; }
+  .hw-card[hidden] { display: none !important; }
+  .hw-card h3 { margin: 0; font-size: 1rem; color: #111; }
+  .hw-card .meta { font-size: 0.82rem; color: #888; display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .hw-card .actions { margin-top: auto; padding-top: 0.75rem; display: flex; gap: 0.5rem; }
+  .hw-card .actions a { font-size: 0.85rem; }
+
+  /* Status badges */
+  .status-badge {
+    display: inline-block; padding: 0.18rem 0.55rem;
+    border-radius: 999px; font-size: 0.75rem; font-weight: 500;
+  }
+  .status-badge.submitted  { background: #d1fae5; color: #065f46; }
+  .status-badge.graded     { background: #dbeafe; color: #1e40af; }
+  .status-badge.pending    { background: #fef3c7; color: #92400e; }
+  .status-badge.none       { background: #f3f4f6; color: #6b7280; }
+
+  .no-results { color: #888; font-style: italic; padding: 1rem 0; }
+</style>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container">
-    <h1>Homework</h1>
-    <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+  <h1>Homework</h1>
+  <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
 
-    <div th:if="${#lists.isEmpty(homework)}" class="empty">No homework assigned yet.</div>
+  <!-- ── Tab bar ── -->
+  <div class="tab-bar" id="tabBar">
+    <button class="tab-btn" data-tab="all">All
+      <span style="font-size:.75rem;color:#aaa;margin-left:.3rem;"
+            th:text="'(' + ${#lists.size(allHomework)} + ')'"></span>
+    </button>
+    <button th:each="s : ${subjects}"
+            class="tab-btn"
+            th:data-tab="${'tab-' + s.id}">
+      <span th:text="${s.name}">Math</span>
+      <span style="font-size:.75rem;color:#aaa;margin-left:.3rem;"
+            th:text="'(' + ${hwCountBySubject[s.id] ?: 0} + ')'"></span>
+    </button>
+  </div>
 
-    <table class="table" th:if="${!#lists.isEmpty(homework)}">
-        <thead>
-        <tr><th>Title</th><th>Subject</th><th>Due</th><th>Status</th><th></th></tr>
-        </thead>
-        <tbody>
-        <tr th:each="hw : ${homework}">
-            <td th:text="${hw.title}">Title</td>
-            <td th:text="${hw.subject != null ? hw.subject.name : '—'}">Math</td>
-            <td th:text="${hw.dueDate != null ? #temporals.format(hw.dueDate,'MMM d, yyyy HH:mm') : '—'}">—</td>
-            <td>
-                <span class="muted">Open to see status</span>
-            </td>
-            <td>
-                <a th:href="@{|/homework/${hw.id}|}" class="btn">Open</a>
-                <a th:href="@{|/quiz/${hw.id}|}" class="btn btn-primary" style="margin-left:0.3rem;">Take Quiz</a>
-            </td>
-        </tr>
-        </tbody>
-    </table>
+  <!-- ════════════════════════════════════════════════════════
+       "All" panel
+       ════════════════════════════════════════════════════════ -->
+  <div class="tab-panel" id="all">
+    <div class="search-bar">
+      <input type="text" placeholder="Search all homework…" id="searchAll" autocomplete="off">
+      <span class="search-count" id="countAll"></span>
+    </div>
+
+    <div th:if="${#lists.isEmpty(allHomework)}" class="empty">No homework assigned yet.</div>
+
+    <div class="hw-cards" id="gridAll">
+      <div th:each="hw : ${allHomework}"
+           class="hw-card"
+           th:data-title="${hw.title?.toLowerCase()}"
+           th:data-subject="${hw.subject != null ? hw.subject.name?.toLowerCase() : ''}"
+           th:data-category="${hw.category != null ? hw.category?.toLowerCase() : ''}">
+
+        <h3 th:text="${hw.title}">Title</h3>
+        <div class="meta">
+          <span th:if="${hw.subject != null}" th:text="${hw.subject.name}"></span>
+          <span th:if="${hw.category != null and !hw.category.isEmpty()}"
+                th:text="${hw.category}"></span>
+          <span th:if="${hw.dueDate != null}"
+                th:text="'Due: ' + ${#temporals.format(hw.dueDate,'MMM d, yyyy')}"></span>
+          <!-- Status -->
+          <th:block th:with="sub=${mySubmissions.?[homework.id == __${hw.id}__]}">
+            <span th:if="${!#lists.isEmpty(sub) and sub[0].grade != null}"
+                  class="status-badge graded"
+                  th:text="'Graded: ' + ${sub[0].grade} + '/100'"></span>
+            <span th:if="${!#lists.isEmpty(sub) and sub[0].grade == null}"
+                  class="status-badge submitted">Submitted</span>
+            <span th:if="${#lists.isEmpty(sub)}"
+                  class="status-badge none">Not started</span>
+          </th:block>
+        </div>
+        <div class="actions">
+          <a th:href="@{|/homework/${hw.id}|}" class="btn">Open</a>
+          <a th:href="@{|/quiz/${hw.id}|}" class="btn btn-primary">Take Quiz</a>
+        </div>
+      </div>
+    </div>
+    <p class="no-results" id="noResultsAll" style="display:none;">No homework matches your search.</p>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       Per-subject panels with sub-subject sections + search
+       ════════════════════════════════════════════════════════ -->
+  <div th:each="s : ${subjects}"
+       class="tab-panel"
+       th:id="'tab-' + ${s.id}">
+
+    <div class="search-bar">
+      <input type="text"
+             th:placeholder="'Search ' + ${s.name} + ' homework…'"
+             th:id="'search-' + ${s.id}"
+             autocomplete="off">
+      <span class="search-count" th:id="'count-' + ${s.id}"></span>
+    </div>
+
+    <div th:if="${hwByCat[s.id] == null or #maps.isEmpty(hwByCat[s.id])}" class="empty">
+      No homework in this subject yet.
+    </div>
+
+    <div th:if="${hwByCat[s.id] != null and !#maps.isEmpty(hwByCat[s.id])}"
+         th:id="'sections-' + ${s.id}">
+      <div th:each="entry : ${hwByCat[s.id]}"
+           class="category-section"
+           th:id="'cat-' + ${s.id} + '-' + ${entry.key}">
+        <h2 class="category-title">
+          <span th:text="${entry.key}">Category</span>
+          <span class="cat-count" th:text="${#lists.size(entry.value)}">0</span>
+        </h2>
+        <div class="hw-cards">
+          <div th:each="hw : ${entry.value}"
+               class="hw-card"
+               th:data-title="${hw.title?.toLowerCase()}"
+               th:data-category="${hw.category != null ? hw.category?.toLowerCase() : 'general'}">
+
+            <h3 th:text="${hw.title}">Title</h3>
+            <div class="meta">
+              <span th:if="${hw.dueDate != null}"
+                    th:text="'Due: ' + ${#temporals.format(hw.dueDate,'MMM d, yyyy')}"></span>
+              <!-- Status -->
+              <th:block th:with="sub=${mySubmissions.?[homework.id == __${hw.id}__]}">
+                <span th:if="${!#lists.isEmpty(sub) and sub[0].grade != null}"
+                      class="status-badge graded"
+                      th:text="'Graded: ' + ${sub[0].grade} + '/100'"></span>
+                <span th:if="${!#lists.isEmpty(sub) and sub[0].grade == null}"
+                      class="status-badge submitted">Submitted</span>
+                <span th:if="${#lists.isEmpty(sub)}"
+                      class="status-badge none">Not started</span>
+              </th:block>
+            </div>
+            <div class="actions">
+              <a th:href="@{|/homework/${hw.id}|}" class="btn">Open</a>
+              <a th:href="@{|/quiz/${hw.id}|}" class="btn btn-primary">Take Quiz</a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <p class="no-results" th:id="'noResults-' + ${s.id}" style="display:none;">
+        No homework matches your search.
+      </p>
+    </div>
+  </div>
+
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script>
+(function () {
+  // ── Tab switching ──────────────────────────────────────────
+  const tabBar  = document.getElementById('tabBar');
+  const tabBtns = Array.from(tabBar.querySelectorAll('.tab-btn'));
+  const panels  = Array.from(document.querySelectorAll('.tab-panel'));
+
+  function activate(tabId) {
+    tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+    panels.forEach(p  => p.classList.toggle('active', p.id === tabId));
+    try { sessionStorage.setItem('homeworkTab', tabId); } catch(_) {}
+  }
+
+  tabBtns.forEach(btn => btn.addEventListener('click', () => activate(btn.dataset.tab)));
+
+  let saved = 'all';
+  try { saved = sessionStorage.getItem('homeworkTab') || 'all'; } catch(_) {}
+  if (!panels.find(p => p.id === saved)) saved = 'all';
+  activate(saved);
+
+  // ── Search: All tab ────────────────────────────────────────
+  const searchAll    = document.getElementById('searchAll');
+  const gridAll      = document.getElementById('gridAll');
+  const countAll     = document.getElementById('countAll');
+  const noResultsAll = document.getElementById('noResultsAll');
+
+  if (searchAll && gridAll) {
+    const allCards = Array.from(gridAll.querySelectorAll('.hw-card'));
+    searchAll.addEventListener('input', () => {
+      const q = searchAll.value.trim().toLowerCase();
+      let shown = 0;
+      allCards.forEach(c => {
+        const match = !q
+          || (c.dataset.title    || '').includes(q)
+          || (c.dataset.subject  || '').includes(q)
+          || (c.dataset.category || '').includes(q);
+        c.hidden = !match;
+        if (match) shown++;
+      });
+      countAll.textContent = q ? shown + ' result' + (shown !== 1 ? 's' : '') : '';
+      noResultsAll.style.display = (q && shown === 0) ? 'block' : 'none';
+    });
+  }
+
+  // ── Search: per-subject tabs ───────────────────────────────
+  document.querySelectorAll('.tab-panel[id^="tab-"]').forEach(panel => {
+    const sid     = panel.id.replace('tab-', '');
+    const input   = document.getElementById('search-' + sid);
+    const counter = document.getElementById('count-' + sid);
+    const noRes   = document.getElementById('noResults-' + sid);
+    const sections = panel.querySelectorAll('.category-section');
+    if (!input || sections.length === 0) return;
+
+    input.addEventListener('input', () => {
+      const q = input.value.trim().toLowerCase();
+      let totalShown = 0;
+
+      sections.forEach(section => {
+        const cards = Array.from(section.querySelectorAll('.hw-card'));
+        let sectionShown = 0;
+        cards.forEach(c => {
+          const match = !q
+            || (c.dataset.title    || '').includes(q)
+            || (c.dataset.category || '').includes(q);
+          c.hidden = !match;
+          if (match) sectionShown++;
+        });
+        section.style.display = sectionShown === 0 ? 'none' : '';
+        totalShown += sectionShown;
+      });
+
+      counter.textContent = q ? totalShown + ' result' + (totalShown !== 1 ? 's' : '') : '';
+      if (noRes) noRes.style.display = (q && totalShown === 0) ? 'block' : 'none';
+    });
+  });
+})();
+</script>
 </body>
 </html>

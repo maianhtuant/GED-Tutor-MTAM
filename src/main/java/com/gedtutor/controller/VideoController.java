@@ -38,6 +38,7 @@ public class VideoController {
         // subjectId → (category → videos)  — used by the tab panels
         // Category "General" catches videos with no category set.
         Map<Long, Map<String, List<Video>>> videosByCat = new LinkedHashMap<>();
+        Map<Long, Integer> videoCountBySubject = new LinkedHashMap<>();
         for (Subject s : subjects) {
             List<Video> svids = videoService.listPublicBySubject(s.getId());
             Map<String, List<Video>> byCategory = new TreeMap<>();
@@ -47,11 +48,13 @@ public class VideoController {
                 byCategory.computeIfAbsent(cat, k -> new java.util.ArrayList<>()).add(v);
             }
             videosByCat.put(s.getId(), byCategory);
+            videoCountBySubject.put(s.getId(), svids.size());
         }
 
-        model.addAttribute("subjects",     subjects);
-        model.addAttribute("allVideos",    allVideos);
-        model.addAttribute("videosByCat",  videosByCat);
+        model.addAttribute("subjects",            subjects);
+        model.addAttribute("allVideos",           allVideos);
+        model.addAttribute("videosByCat",         videosByCat);
+        model.addAttribute("videoCountBySubject", videoCountBySubject);
         return "videos";
     }
 

@@ -95,7 +95,7 @@
             th:data-subject-id="${s.id}">
       <span th:text="${s.name}">Math</span>
       <span style="font-size:0.75rem;color:#aaa;margin-left:0.3rem;"
-            th:text="'(' + ${videosByCat[s.id] != null ? videosByCat[s.id].values().stream().mapToInt(#lists.size(#object)).sum() : 0} + ')'"></span>
+            th:text="'(' + ${videoCountBySubject[s.id] ?: 0} + ')'"></span>
     </button>
   </div>
 

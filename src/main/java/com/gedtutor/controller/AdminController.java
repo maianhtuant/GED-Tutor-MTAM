@@ -331,6 +331,7 @@ public class AdminController {
         form.setTitle(hw.getTitle());
         form.setInstructions(hw.getInstructions());
         form.setSubjectId(hw.getSubject() != null ? hw.getSubject().getId() : null);
+        form.setCategory(hw.getCategory());
         form.setDueDate(hw.getDueDate());
         form.setPublished(hw.isPublished());
         form.setQuestionsPerAttempt(hw.getQuestionsPerAttempt());

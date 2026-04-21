@@ -66,6 +66,8 @@ public class HomeworkService {
         hw.setTitle(form.getTitle());
         hw.setInstructions(form.getInstructions());
         hw.setSubject(subjectService.findById(form.getSubjectId()));
+        hw.setCategory(form.getCategory() != null && !form.getCategory().isBlank()
+                ? form.getCategory().trim() : null);
         hw.setDueDate(form.getDueDate());
         hw.setPublished(form.isPublished());
         // null / 0 / negative = all questions; positive = random sample of that size
