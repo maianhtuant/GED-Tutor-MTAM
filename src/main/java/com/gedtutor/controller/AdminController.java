@@ -1,9 +1,11 @@
 package com.gedtutor.controller;
 
 import com.gedtutor.dto.HomeworkForm;
+import com.gedtutor.dto.QuestionForm;
 import com.gedtutor.dto.VideoForm;
 import com.gedtutor.model.*;
 import com.gedtutor.service.HomeworkService;
+import com.gedtutor.service.QuizService;
 import com.gedtutor.service.UserService;
 import com.gedtutor.service.VideoService;
 import jakarta.validation.Valid;
@@ -22,11 +24,14 @@ public class AdminController {
     private final VideoService videoService;
     private final UserService userService;
     private final HomeworkService homeworkService;
+    private final QuizService quizService;
 
-    public AdminController(VideoService videoService, UserService userService, HomeworkService homeworkService) {
+    public AdminController(VideoService videoService, UserService userService,
+                           HomeworkService homeworkService, QuizService quizService) {
         this.videoService = videoService;
         this.userService = userService;
         this.homeworkService = homeworkService;
+        this.quizService = quizService;
     }
 
     // ===================== Dashboard =====================
@@ -50,7 +55,7 @@ public class AdminController {
     @GetMapping("/videos/new")
     public String newVideo(Model model) {
         VideoForm form = new VideoForm();
-        form.setVisibility(VideoVisibility.PUBLIC);
+        form.setVisibility(VideoVisibility.PRIVATE);
         model.addAttribute("form", form);
         model.addAttribute("subjects", GedSubject.values());
         model.addAttribute("visibilities", VideoVisibility.values());
@@ -248,5 +253,84 @@ public class AdminController {
         homeworkService.grade(id, grade, feedback);
         ra.addFlashAttribute("message", "Grade saved.");
         return "redirect:/admin/homework/" + homeworkId + "/submissions";
+    }
+
+    // ===================== Questions =====================
+
+    @GetMapping("/homework/{hwId}/questions")
+    public String questions(@PathVariable Long hwId, Model model) {
+        Homework hw = homeworkService.findById(hwId);
+        model.addAttribute("hw", hw);
+        model.addAttribute("questions", quizService.getQuestions(hw));
+        return "admin/questions";
+    }
+
+    @GetMapping("/homework/{hwId}/questions/new")
+    public String newQuestion(@PathVariable Long hwId, Model model) {
+        model.addAttribute("hw", homeworkService.findById(hwId));
+        model.addAttribute("form", new QuestionForm());
+        model.addAttribute("types", QuestionType.values());
+        return "admin/question-form";
+    }
+
+    @PostMapping("/homework/{hwId}/questions/new")
+    public String createQuestion(@PathVariable Long hwId,
+                                 @Valid @ModelAttribute("form") QuestionForm form,
+                                 BindingResult binding,
+                                 Model model,
+                                 RedirectAttributes ra) {
+        if (binding.hasErrors()) {
+            model.addAttribute("hw", homeworkService.findById(hwId));
+            model.addAttribute("types", QuestionType.values());
+            return "admin/question-form";
+        }
+        quizService.saveQuestion(hwId, form);
+        ra.addFlashAttribute("message", "Question added.");
+        return "redirect:/admin/homework/" + hwId + "/questions";
+    }
+
+    @GetMapping("/homework/{hwId}/questions/{qId}/edit")
+    public String editQuestion(@PathVariable Long hwId, @PathVariable Long qId, Model model) {
+        Homework hw = homeworkService.findById(hwId);
+        Question q = quizService.findQuestionById(qId);
+        QuestionForm form = new QuestionForm();
+        form.setId(q.getId());
+        form.setType(q.getType());
+        form.setQuestionText(q.getQuestionText());
+        form.setCorrectAnswer(q.getCorrectAnswer());
+        form.setExplanation(q.getExplanation());
+        form.setOrderIndex(q.getOrderIndex());
+        if (q.getType() == QuestionType.MULTIPLE_CHOICE) {
+            form.setChoices(q.getChoices().stream()
+                    .map(QuestionChoice::getChoiceText).toList());
+        }
+        model.addAttribute("hw", hw);
+        model.addAttribute("form", form);
+        model.addAttribute("types", QuestionType.values());
+        return "admin/question-form";
+    }
+
+    @PostMapping("/homework/{hwId}/questions/{qId}/edit")
+    public String updateQuestion(@PathVariable Long hwId, @PathVariable Long qId,
+                                 @Valid @ModelAttribute("form") QuestionForm form,
+                                 BindingResult binding,
+                                 Model model,
+                                 RedirectAttributes ra) {
+        if (binding.hasErrors()) {
+            model.addAttribute("hw", homeworkService.findById(hwId));
+            model.addAttribute("types", QuestionType.values());
+            return "admin/question-form";
+        }
+        form.setId(qId);
+        quizService.saveQuestion(hwId, form);
+        ra.addFlashAttribute("message", "Question updated.");
+        return "redirect:/admin/homework/" + hwId + "/questions";
+    }
+
+    @PostMapping("/homework/{hwId}/questions/{qId}/delete")
+    public String deleteQuestion(@PathVariable Long hwId, @PathVariable Long qId, RedirectAttributes ra) {
+        quizService.deleteQuestion(qId);
+        ra.addFlashAttribute("message", "Question deleted.");
+        return "redirect:/admin/homework/" + hwId + "/questions";
     }
 }

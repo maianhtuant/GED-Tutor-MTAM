@@ -22,7 +22,10 @@
             <td>
                 <span class="muted">Open to see status</span>
             </td>
-            <td><a th:href="@{|/homework/${hw.id}|}" class="btn">Open</a></td>
+            <td>
+                <a th:href="@{|/homework/${hw.id}|}" class="btn">Open</a>
+                <a th:href="@{|/quiz/${hw.id}|}" class="btn btn-primary" style="margin-left:0.3rem;">Take Quiz</a>
+            </td>
         </tr>
         </tbody>
     </table>

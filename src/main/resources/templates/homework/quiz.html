@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Quiz')}"></head>
+<style>
+  .quiz-card { background:#fff; border:1px solid #ddd; border-radius:8px; padding:1.5rem; margin-bottom:1.5rem; }
+  .quiz-card.correct  { border-left:4px solid #28a745; background:#f0fff4; }
+  .quiz-card.incorrect{ border-left:4px solid #dc3545; background:#fff5f5; }
+  .choices label { display:block; padding:0.5rem 0.75rem; margin:0.3rem 0;
+                   border:1px solid #ddd; border-radius:6px; cursor:pointer; }
+  .choices label:hover { background:#f5f5f5; }
+  .choices input[type=radio] { margin-right:0.5rem; }
+  .feedback-box { margin-top:0.75rem; padding:0.75rem; border-radius:6px; display:none; }
+  .feedback-box.correct  { background:#d4edda; color:#155724; }
+  .feedback-box.incorrect{ background:#f8d7da; color:#721c24; }
+  .fill-input { width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:6px; font-size:1rem; }
+  .submit-btn { margin-top:0.5rem; }
+  .score-box { background:#e8f5e9; border:2px solid #28a745; border-radius:8px; padding:2rem; text-align:center; margin:2rem 0; }
+  .score-box h2 { color:#28a745; font-size:2.5rem; margin:0; }
+  .past-attempts { margin-top:2rem; }
+  .attempt-row { display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #eee; }
+  .badge-type { background:#6c757d; color:#fff; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; margin-right:0.5rem; }
+  #progressBar { height:8px; background:#e9ecef; border-radius:4px; margin-bottom:1.5rem; }
+  #progressFill { height:100%; background:#28a745; border-radius:4px; transition:width 0.3s; width:0%; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <a th:href="@{/homework}" class="back-link">&larr; Back to Homework</a>
+    <h1 th:text="${hw.title}">Quiz</h1>
+
+    <!-- Attempt info -->
+    <div style="margin-bottom:1rem; color:#666;">
+        Attempts: <strong th:text="${attemptCount} + ' / ' + ${maxAttempts}">0/3</strong>
+    </div>
+
+    <!-- Not started yet -->
+    <div th:if="${!quizStarted}">
+        <div th:if="${#lists.isEmpty(questions)}" class="empty">
+            No questions available yet for this quiz.
+        </div>
+
+        <div th:if="${!#lists.isEmpty(questions) and canAttempt}">
+            <p th:text="'This quiz has ' + ${#lists.size(questions)} + ' questions. You have ' + (${maxAttempts} - ${attemptCount}) + ' attempt(s) remaining.'"></p>
+            <form th:action="@{|/quiz/${hw.id}/start|}" method="post">
+                <button type="submit" class="btn btn-primary">Start Quiz</button>
+            </form>
+        </div>
+
+        <div th:if="${!canAttempt}" class="alert alert-danger">
+            You have used all your attempts for this quiz.
+        </div>
+
+        <!-- Past attempts -->
+        <div class="past-attempts" th:if="${!#lists.isEmpty(attempts)}">
+            <h3>Your Previous Attempts</h3>
+            <div th:each="a : ${attempts}" class="attempt-row">
+                <span>Attempt #<span th:text="${a.attemptNumber}"></span></span>
+                <span th:text="${a.score} + ' / ' + ${a.totalQuestions} + ' (' + (${a.totalQuestions > 0} ? ${a.score * 100 / a.totalQuestions} : 0) + '%)'"></span>
+                <span class="muted" th:text="${#temporals.format(a.completedAt, 'MMM d, yyyy HH:mm')}"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quiz in progress -->
+    <div th:if="${quizStarted}" id="quizArea">
+        <div id="progressBar"><div id="progressFill"></div></div>
+
+        <div th:each="q, stat : ${questions}" class="quiz-card" th:id="'card-' + ${q.id}">
+            <div style="margin-bottom:0.5rem; color:#888; font-size:0.9rem;">
+                Question <span th:text="${stat.index + 1}"></span> of <span th:text="${#lists.size(questions)}"></span>
+                <span class="badge-type" th:text="${q.type}"></span>
+            </div>
+            <p style="font-weight:600;" th:text="${q.questionText}"></p>
+
+            <!-- Multiple Choice -->
+            <div th:if="${q.type.name() == 'MULTIPLE_CHOICE'}" class="choices" th:id="'choices-' + ${q.id}">
+                <label th:each="c : ${q.choices}">
+                    <input type="radio" th:name="'q-' + ${q.id}" th:value="${c.choiceText}"
+                           th:attr="data-qid=${q.id}, data-attemptid=${attemptId}"
+                           class="mc-option">
+                    <span th:text="${c.choiceText}"></span>
+                </label>
+            </div>
+
+            <!-- True / False -->
+            <div th:if="${q.type.name() == 'TRUE_FALSE'}" class="choices" th:id="'choices-' + ${q.id}">
+                <label>
+                    <input type="radio" th:name="'q-' + ${q.id}" value="true"
+                           th:attr="data-qid=${q.id}, data-attemptid=${attemptId}"
+                           class="mc-option">
+                    <span>True</span>
+                </label>
+                <label>
+                    <input type="radio" th:name="'q-' + ${q.id}" value="false"
+                           th:attr="data-qid=${q.id}, data-attemptid=${attemptId}"
+                           class="mc-option">
+                    <span>False</span>
+                </label>
+            </div>
+
+            <!-- Fill in the blank -->
+            <div th:if="${q.type.name() == 'FILL_BLANK'}" th:id="'fill-' + ${q.id}">
+                <input type="text" class="fill-input" placeholder="Type your answer..."
+                       th:id="'fill-input-' + ${q.id}"
+                       th:attr="data-qid=${q.id}, data-attemptid=${attemptId}">
+                <button class="btn btn-primary submit-btn fill-submit"
+                        th:attr="data-qid=${q.id}, data-attemptid=${attemptId}">
+                    Submit Answer
+                </button>
+            </div>
+
+            <!-- Feedback box -->
+            <div class="feedback-box" th:id="'feedback-' + ${q.id}">
+                <strong class="feedback-label"></strong>
+                <span class="feedback-answer"></span>
+                <div class="feedback-explanation" style="margin-top:0.3rem; font-style:italic;"></div>
+            </div>
+        </div>
+
+        <!-- Score display (hidden until complete) -->
+        <div class="score-box" id="scoreBox" style="display:none;">
+            <h2 id="scoreText"></h2>
+            <p id="scoreMsg"></p>
+            <a th:href="@{|/quiz/${hw.id}|}" class="btn btn-primary" style="margin-top:1rem;">View Summary</a>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script th:inline="javascript">
+    const totalQuestions = /*[[${#lists.size(questions)}]]*/ 0;
+    let answered = 0;
+
+    function updateProgress() {
+        const pct = totalQuestions > 0 ? (answered / totalQuestions * 100) : 0;
+        document.getElementById('progressFill').style.width = pct + '%';
+        if (answered === totalQuestions && totalQuestions > 0) {
+            finishQuiz();
+        }
+    }
+
+    function showFeedback(qid, correct, correctAnswer, explanation) {
+        const card = document.getElementById('card-' + qid);
+        const box  = document.getElementById('feedback-' + qid);
+        card.classList.add(correct ? 'correct' : 'incorrect');
+        box.classList.add(correct ? 'correct' : 'incorrect');
+        box.querySelector('.feedback-label').textContent = correct ? '✅ Correct! ' : '❌ Incorrect. ';
+        box.querySelector('.feedback-answer').textContent = correct ? '' : 'Correct answer: ' + correctAnswer;
+        if (explanation) box.querySelector('.feedback-explanation').textContent = explanation;
+        box.style.display = 'block';
+    }
+
+    function submitAnswer(qid, attemptId, answer) {
+        fetch('/quiz/attempt/' + attemptId + '/answer', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+            body: 'questionId=' + qid + '&answer=' + encodeURIComponent(answer)
+        })
+        .then(r => r.json())
+        .then(data => {
+            showFeedback(qid, data.correct, data.correctAnswer, data.explanation);
+            answered++;
+            updateProgress();
+        });
+    }
+
+    // Multiple choice & True/False: answer on click
+    document.querySelectorAll('.mc-option').forEach(radio => {
+        radio.addEventListener('change', function() {
+            const qid = this.dataset.qid;
+            const attemptId = this.dataset.attemptid;
+            // Disable all options for this question
+            document.querySelectorAll('input[name="q-' + qid + '"]').forEach(r => r.disabled = true);
+            submitAnswer(qid, attemptId, this.value);
+        });
+    });
+
+    // Fill in the blank: answer on button click or Enter
+    document.querySelectorAll('.fill-submit').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const qid = this.dataset.qid;
+            const attemptId = this.dataset.attemptid;
+            const input = document.getElementById('fill-input-' + qid);
+            if (!input.value.trim()) return;
+            input.disabled = true;
+            this.disabled = true;
+            submitAnswer(qid, attemptId, input.value.trim());
+        });
+    });
+
+    document.querySelectorAll('.fill-input').forEach(input => {
+        input.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                const qid = this.dataset.qid;
+                document.querySelector('.fill-submit[data-qid="' + qid + '"]').click();
+            }
+        });
+    });
+
+    function finishQuiz() {
+        const attemptId = document.querySelector('[data-attemptid]')?.dataset?.attemptid;
+        if (!attemptId) return;
+        fetch('/quiz/attempt/' + attemptId + '/complete', { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            const box = document.getElementById('scoreBox');
+            document.getElementById('scoreText').textContent = data.score + ' / ' + data.total;
+            let msg = data.percentage >= 80 ? '🎉 Excellent work!' :
+                      data.percentage >= 60 ? '👍 Good job!' : '📚 Keep studying!';
+            document.getElementById('scoreMsg').textContent = msg + ' (' + data.percentage + '%)';
+            box.style.display = 'block';
+            box.scrollIntoView({ behavior: 'smooth' });
+        });
+    }
+</script>
+</body>
+</html>

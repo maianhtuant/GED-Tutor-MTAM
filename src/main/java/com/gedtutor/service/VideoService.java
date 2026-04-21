@@ -79,6 +79,11 @@ public class VideoService {
     }
 
     @Transactional
+    public void setAllPrivate() {
+        videoRepository.updateAllVisibility(VideoVisibility.PRIVATE);
+    }
+
+    @Transactional
     public void delete(Long id) {
         videoRepository.deleteById(id);
     }

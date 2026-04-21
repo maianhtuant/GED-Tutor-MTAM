@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Questions')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <a th:href="@{/admin/homework}" class="back-link">&larr; Back to Homework</a>
+    <h1>Questions: <span th:text="${hw.title}">HW</span></h1>
+
+    <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+
+    <a th:href="@{|/admin/homework/${hw.id}/questions/new|}" class="btn btn-primary" style="margin-bottom:1rem;">+ Add Question</a>
+
+    <div th:if="${#lists.isEmpty(questions)}" class="empty">No questions yet. Add your first question!</div>
+
+    <div th:each="q, stat : ${questions}" class="card" style="margin-bottom:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+            <div>
+                <span class="badge" th:text="${q.type}"></span>
+                <strong th:text="${stat.index + 1} + '. ' + ${q.questionText}">Question</strong>
+                <div class="muted" style="margin-top:0.3rem;">
+                    Correct answer: <code th:text="${q.correctAnswer}"></code>
+                </div>
+                <div th:if="${q.explanation}" class="muted" style="font-size:0.85rem;" th:text="'Explanation: ' + ${q.explanation}"></div>
+                <div th:if="${!#lists.isEmpty(q.choices)}" style="margin-top:0.5rem;">
+                    <span th:each="c : ${q.choices}" style="margin-right:0.5rem;">
+                        <span th:text="${c.choiceText}"
+                              th:class="${c.choiceText == q.correctAnswer} ? 'choice correct-choice' : 'choice'"></span>
+                    </span>
+                </div>
+            </div>
+            <div style="display:flex; gap:0.5rem;">
+                <a th:href="@{|/admin/homework/${hw.id}/questions/${q.id}/edit|}" class="btn btn-sm">Edit</a>
+                <form th:action="@{|/admin/homework/${hw.id}/questions/${q.id}/delete|}" method="post">
+                    <button type="submit" class="btn btn-sm btn-danger"
+                            onclick="return confirm('Delete this question?')">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

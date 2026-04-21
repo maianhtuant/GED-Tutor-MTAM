@@ -24,6 +24,7 @@
             <td th:text="${hw.published ? 'Yes' : 'No'}">Yes</td>
             <td>
                 <a th:href="@{|/admin/homework/${hw.id}/edit|}" class="btn">Edit</a>
+                <a th:href="@{|/admin/homework/${hw.id}/questions|}" class="btn btn-primary">Questions</a>
                 <a th:href="@{|/admin/homework/${hw.id}/submissions|}" class="btn">Submissions</a>
                 <form th:action="@{|/admin/homework/${hw.id}/delete|}" method="post" style="display:inline"
                       onsubmit="return confirm('Delete this homework?');">

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Question')}"></head>
+<style>
+  .choices-section { display:none; margin-top:0.5rem; }
+  .fill-hint { display:none; font-size:0.85rem; color:#666; margin-top:0.3rem; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <a th:href="@{|/admin/homework/${hw.id}/questions|}" class="back-link">&larr; Back to Questions</a>
+    <h1 th:text="${form.id == null} ? 'Add Question' : 'Edit Question'">Question</h1>
+
+    <form th:action="${form.id == null} ? @{|/admin/homework/${hw.id}/questions/new|} : @{|/admin/homework/${hw.id}/questions/${form.id}/edit|}"
+          method="post" id="questionForm">
+
+        <label>Question Type
+            <select name="type" id="typeSelect" required th:value="${form.type}">
+                <option value="">-- Select type --</option>
+                <option th:each="t : ${types}" th:value="${t}" th:text="${t}"
+                        th:selected="${form.type == t}"></option>
+            </select>
+        </label>
+
+        <label>Question Text
+            <textarea name="questionText" rows="3" required
+                      th:text="${form.questionText}"></textarea>
+        </label>
+
+        <!-- Multiple choice options -->
+        <div class="choices-section" id="choicesSection">
+            <label>Answer Choices (enter 4 options)</label>
+            <div th:each="i : ${#numbers.sequence(0, 3)}" style="margin-bottom:0.4rem;">
+                <input type="text" th:name="'choices[' + ${i} + ']'"
+                       th:value="${#lists.size(form.choices) > i} ? ${form.choices[i]} : ''"
+                       th:placeholder="'Choice ' + (${i} + 1)">
+            </div>
+            <label>Correct Answer
+                <input type="text" name="correctAnswer" id="correctAnswerMC"
+                       th:value="${form.correctAnswer}"
+                       placeholder="Must match one of the choices exactly">
+            </label>
+        </div>
+
+        <!-- True/False -->
+        <div id="tfSection" style="display:none;">
+            <label>Correct Answer
+                <select name="correctAnswer" id="correctAnswerTF">
+                    <option value="true" th:selected="${form.correctAnswer == 'true'}">True</option>
+                    <option value="false" th:selected="${form.correctAnswer == 'false'}">False</option>
+                </select>
+            </label>
+        </div>
+
+        <!-- Fill in the blank -->
+        <div id="fillSection" style="display:none;">
+            <label>Correct Answer
+                <input type="text" name="correctAnswer" id="correctAnswerFill"
+                       th:value="${form.correctAnswer}"
+                       placeholder="The expected answer (case-insensitive)">
+            </label>
+            <div class="fill-hint" id="fillHint">Tip: partial matches are accepted (e.g. student types part of the answer)</div>
+        </div>
+
+        <label>Explanation (optional — shown after answering)
+            <textarea name="explanation" rows="2"
+                      th:text="${form.explanation}"></textarea>
+        </label>
+
+        <input type="hidden" name="orderIndex" th:value="${form.orderIndex}">
+
+        <button type="submit" class="btn btn-primary">Save Question</button>
+        <a th:href="@{|/admin/homework/${hw.id}/questions|}" class="btn">Cancel</a>
+    </form>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script th:inline="javascript">
+    const savedType = /*[[${form.type}]]*/ null;
+
+    function showFieldsForType(type) {
+        document.getElementById('choicesSection').style.display = 'none';
+        document.getElementById('tfSection').style.display = 'none';
+        document.getElementById('fillSection').style.display = 'none';
+        document.getElementById('fillHint').style.display = 'none';
+
+        if (type === 'MULTIPLE_CHOICE') {
+            document.getElementById('choicesSection').style.display = 'block';
+        } else if (type === 'TRUE_FALSE') {
+            document.getElementById('tfSection').style.display = 'block';
+        } else if (type === 'FILL_BLANK') {
+            document.getElementById('fillSection').style.display = 'block';
+            document.getElementById('fillHint').style.display = 'block';
+        }
+    }
+
+    document.getElementById('typeSelect').addEventListener('change', function() {
+        showFieldsForType(this.value);
+    });
+
+    if (savedType) showFieldsForType(savedType);
+</script>
+</body>
+</html>
