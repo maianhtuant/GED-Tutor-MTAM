@@ -59,6 +59,7 @@ public class VideoService {
         v.setProvider(parsed.provider());
         v.setEmbedId(parsed.embedId());
         v.setSubject(subjectService.findById(form.getSubjectId()));
+        v.setCategory(form.getCategory() != null && !form.getCategory().isBlank() ? form.getCategory().trim() : null);
         v.setVisibility(form.getVisibility());
         v.setUploadedBy(uploader);
         return videoRepository.save(v);
@@ -76,6 +77,7 @@ public class VideoService {
             v.setEmbedId(parsed.embedId());
         }
         v.setSubject(subjectService.findById(form.getSubjectId()));
+        v.setCategory(form.getCategory() != null && !form.getCategory().isBlank() ? form.getCategory().trim() : null);
         v.setVisibility(form.getVisibility());
         return videoRepository.save(v);
     }

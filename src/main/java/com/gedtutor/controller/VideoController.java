@@ -16,6 +16,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 @Controller
 @RequestMapping("/videos")
@@ -30,19 +31,27 @@ public class VideoController {
     }
 
     @GetMapping
-    public String list(@RequestParam(required = false) Long subjectId, Model model) {
-        List<Subject> subjects = subjectService.listAll();
+    public String list(Model model) {
+        List<Subject> subjects  = subjectService.listAll();
         List<Video>   allVideos = videoService.listPublic();
 
-        // Build a map: subjectId → videos for that subject (used by the tab panels)
-        Map<Long, List<Video>> videosBySubject = new LinkedHashMap<>();
+        // subjectId → (category → videos)  — used by the tab panels
+        // Category "General" catches videos with no category set.
+        Map<Long, Map<String, List<Video>>> videosByCat = new LinkedHashMap<>();
         for (Subject s : subjects) {
-            videosBySubject.put(s.getId(), videoService.listPublicBySubject(s.getId()));
+            List<Video> svids = videoService.listPublicBySubject(s.getId());
+            Map<String, List<Video>> byCategory = new TreeMap<>();
+            for (Video v : svids) {
+                String cat = (v.getCategory() != null && !v.getCategory().isBlank())
+                        ? v.getCategory().trim() : "General";
+                byCategory.computeIfAbsent(cat, k -> new java.util.ArrayList<>()).add(v);
+            }
+            videosByCat.put(s.getId(), byCategory);
         }
 
-        model.addAttribute("subjects",        subjects);
-        model.addAttribute("allVideos",        allVideos);
-        model.addAttribute("videosBySubject",  videosBySubject);
+        model.addAttribute("subjects",     subjects);
+        model.addAttribute("allVideos",    allVideos);
+        model.addAttribute("videosByCat",  videosByCat);
         return "videos";
     }
 

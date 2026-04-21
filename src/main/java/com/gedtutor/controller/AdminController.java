@@ -185,6 +185,7 @@ public class AdminController {
         form.setDescription(v.getDescription());
         form.setVideoUrl(v.getVideoUrl());
         form.setSubjectId(v.getSubject() != null ? v.getSubject().getId() : null);
+        form.setCategory(v.getCategory());
         form.setVisibility(v.getVisibility());
         model.addAttribute("form", form);
         model.addAttribute("subjects", subjectService.listActive());
