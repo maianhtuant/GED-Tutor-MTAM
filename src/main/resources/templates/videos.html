@@ -191,7 +191,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script th:inline="javascript">
+<script>
 (function () {
     // ── Tab switching ──────────────────────────────────────────
     const tabBar  = document.getElementById('tabBar');
@@ -236,7 +236,6 @@
     }
 
     // ── Search: per-subject tabs ───────────────────────────────
-    /*[[ ${subjects} ]]*/ [].forEach(() => {}); // placeholder — real data below
     document.querySelectorAll('.tab-panel[id^="tab-"]').forEach(panel => {
         const sid      = panel.id.replace('tab-', '');
         const input    = document.getElementById('search-' + sid);
