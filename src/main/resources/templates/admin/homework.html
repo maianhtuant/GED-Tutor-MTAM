@@ -1,6 +1,111 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Manage Homework')}"></head>
+<style>
+    main.container {
+        max-width: none;
+        width: auto;
+        padding-left: 1in;
+        padding-right: 1in;
+        box-sizing: border-box;
+    }
+
+    /* ── Table ──────────────────────────────────────────────── */
+    .hw-table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #fff;
+        font-size: 0.95rem;
+    }
+    .hw-table thead tr:first-child th {
+        background: #fafbfc;
+        color: #6b7280;
+        font-weight: 600;
+        font-size: 0.8rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        text-align: left;
+        padding: 0.75rem 1.25rem;
+        border-bottom: 1px solid #e5e7eb;
+        white-space: nowrap;
+    }
+    .hw-table tbody td {
+        padding: 0.55rem 1.25rem;
+        border-bottom: 1px dashed #e5e7eb;
+        vertical-align: middle;
+        color: #374151;
+        font-size: 0.9rem;
+    }
+    .hw-table tbody tr:hover { background: #f9fafb; }
+
+    /* Sortable headers */
+    .hw-table th.sortable { cursor: pointer; user-select: none; }
+    .hw-table th.sortable .sort-arrows {
+        display: inline-flex; flex-direction: column;
+        margin-left: 0.4rem; line-height: 1;
+        vertical-align: middle; gap: 2px;
+    }
+    .hw-table th.sortable .sort-arrows .up,
+    .hw-table th.sortable .sort-arrows .down {
+        width: 0; height: 0;
+        border-left: 4px solid transparent;
+        border-right: 4px solid transparent;
+    }
+    .hw-table th.sortable .sort-arrows .up   { border-bottom: 5px solid #b0b6c1; }
+    .hw-table th.sortable .sort-arrows .down { border-top:    5px solid #b0b6c1; }
+    .hw-table th.sort-asc  .sort-arrows .up   { border-bottom-color: #374151; }
+    .hw-table th.sort-desc .sort-arrows .down { border-top-color:    #374151; }
+
+    /* Column widths */
+    .hw-table th:nth-child(1), .hw-table td:nth-child(1) { width: 28%; min-width: 200px; }
+    .hw-table th:nth-child(2), .hw-table td:nth-child(2) { width: 10%; min-width: 100px; }
+    .hw-table th:nth-child(3), .hw-table td:nth-child(3) { width: 14%; min-width: 130px; }
+    .hw-table th:nth-child(4), .hw-table td:nth-child(4) { width:  8%; min-width:  80px; text-align: center; }
+    .hw-table th:nth-child(5), .hw-table td:nth-child(5) { width:  8%; min-width:  80px; text-align: center; }
+    .hw-table th:nth-child(6), .hw-table td:nth-child(6) { width: 32%; min-width: 300px; text-align: right; }
+
+    /* Filter row */
+    .filter-row th {
+        background: #fff !important;
+        padding: 0.6rem 1rem !important;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .filter-row input, .filter-row select {
+        width: 100%; box-sizing: border-box;
+        padding: 0.45rem 0.6rem; font: inherit;
+        border: 1px solid #e5e7eb; border-radius: 6px;
+        background: #fff;
+    }
+
+    /* Badges */
+    .badge-subject {
+        display: inline-block;
+        padding: 0.22rem 0.6rem;
+        background: #eef2ff; color: #4338ca;
+        border-radius: 999px; font-size: 0.78rem; font-weight: 500;
+    }
+    .badge-pub {
+        display: inline-block; padding: 0.22rem 0.6rem;
+        border-radius: 999px; font-size: 0.78rem; font-weight: 500;
+    }
+    .badge-pub.yes { background: #d1fae5; color: #065f46; }
+    .badge-pub.no  { background: #fee2e2; color: #991b1b; }
+
+    /* Title styled like invoice number */
+    .hw-table td.col-title { color: #2563eb; font-weight: 500; }
+
+    /* Action buttons */
+    .btn-sm {
+        padding: 0.22rem 0.65rem; font-size: 0.8rem;
+        border-radius: 5px; display: inline-block;
+    }
+    .action-cell { display: flex; gap: 0.35rem; justify-content: flex-end; flex-wrap: wrap; }
+
+    .empty-hint {
+        padding: 2rem; text-align: center;
+        color: #888; font-style: italic;
+    }
+</style>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
@@ -12,31 +117,179 @@
 
     <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
 
-    <table class="table">
+    <div th:if="${#lists.isEmpty(homeworkList)}" class="empty-hint">
+        No homework yet. Click "+ New homework" to create one.
+    </div>
+
+    <table class="table hw-table" th:if="${!#lists.isEmpty(homeworkList)}" id="hwTable">
         <thead>
-        <tr><th>Title</th><th>Subject</th><th>Due</th><th>Q / attempt</th><th>Published</th><th>Actions</th></tr>
+        <tr>
+            <th class="sortable" data-sort="title">
+                Title
+                <span class="sort-arrows"><span class="up"></span><span class="down"></span></span>
+            </th>
+            <th class="sortable" data-sort="subject">
+                Subject
+                <span class="sort-arrows"><span class="up"></span><span class="down"></span></span>
+            </th>
+            <th class="sortable" data-sort="due">
+                Due Date
+                <span class="sort-arrows"><span class="up"></span><span class="down"></span></span>
+            </th>
+            <th class="sortable" data-sort="qpa">
+                Q / Attempt
+                <span class="sort-arrows"><span class="up"></span><span class="down"></span></span>
+            </th>
+            <th class="sortable" data-sort="pub">
+                Published
+                <span class="sort-arrows"><span class="up"></span><span class="down"></span></span>
+            </th>
+            <th>Actions</th>
+        </tr>
+        <tr class="filter-row">
+            <th><input type="text" id="filterTitle"   placeholder="Filter title…"   autocomplete="off"></th>
+            <th><input type="text" id="filterSubject" placeholder="Filter subject…" autocomplete="off"></th>
+            <th></th>
+            <th></th>
+            <th>
+                <select id="filterPub">
+                    <option value="">All</option>
+                    <option value="yes">Published</option>
+                    <option value="no">Draft</option>
+                </select>
+            </th>
+            <th></th>
+        </tr>
         </thead>
         <tbody>
-        <tr th:each="hw : ${homeworkList}">
-            <td th:text="${hw.title}">Title</td>
-            <td th:text="${hw.subject != null ? hw.subject.name : '—'}">Math</td>
-            <td th:text="${hw.dueDate != null ? #temporals.format(hw.dueDate,'MMM d, yyyy HH:mm') : '—'}">—</td>
-            <td th:text="${hw.questionsPerAttempt != null and hw.questionsPerAttempt > 0 ? hw.questionsPerAttempt : 'all'}">all</td>
-            <td th:text="${hw.published ? 'Yes' : 'No'}">Yes</td>
+        <tr th:each="hw : ${homeworkList}"
+            class="hw-row"
+            th:data-id="${hw.id}"
+            th:data-title="${hw.title}"
+            th:data-subject="${hw.subject != null ? hw.subject.name : ''}"
+            th:data-due="${hw.dueDate != null ? #temporals.format(hw.dueDate,'yyyy-MM-dd') : ''}"
+            th:data-qpa="${hw.questionsPerAttempt != null and hw.questionsPerAttempt > 0 ? hw.questionsPerAttempt : 0}"
+            th:data-pub="${hw.published ? 'yes' : 'no'}">
+
+            <td class="col-title" th:text="${hw.title}">Title</td>
+
             <td>
-                <a th:href="@{|/admin/homework/${hw.id}/edit|}" class="btn">Edit</a>
-                <a th:href="@{|/admin/homework/${hw.id}/questions|}" class="btn btn-primary">Questions</a>
-                <a th:href="@{|/admin/homework/${hw.id}/submissions|}" class="btn">Submissions</a>
-                <form th:action="@{|/admin/homework/${hw.id}/delete|}" method="post" style="display:inline"
-                      onsubmit="return confirm('Delete this homework?');">
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                </form>
+                <span class="badge-subject"
+                      th:text="${hw.subject != null ? hw.subject.name : '—'}">Math</span>
+            </td>
+
+            <td th:text="${hw.dueDate != null ? #temporals.format(hw.dueDate,'MMM d, yyyy') : '—'}">—</td>
+
+            <td style="text-align:center;"
+                th:text="${hw.questionsPerAttempt != null and hw.questionsPerAttempt > 0 ? hw.questionsPerAttempt : 'All'}">All</td>
+
+            <td style="text-align:center;">
+                <span class="badge-pub"
+                      th:classappend="${hw.published ? 'yes' : 'no'}"
+                      th:text="${hw.published ? 'Yes' : 'Draft'}">Yes</span>
+            </td>
+
+            <td>
+                <div class="action-cell">
+                    <a th:href="@{|/admin/homework/${hw.id}/edit|}"        class="btn btn-sm">Edit</a>
+                    <a th:href="@{|/admin/homework/${hw.id}/questions|}"   class="btn btn-sm btn-primary">Questions</a>
+                    <a th:href="@{|/admin/homework/${hw.id}/submissions|}" class="btn btn-sm">Submissions</a>
+                    <form th:action="@{|/admin/homework/${hw.id}/delete|}" method="post" style="display:inline"
+                          onsubmit="return confirm('Delete this homework?');">
+                        <button type="submit" class="btn btn-sm btn-danger">Delete</button>
+                    </form>
+                </div>
             </td>
         </tr>
         </tbody>
     </table>
+
+    <div id="noMatch" class="empty-hint" style="display:none;">
+        No homework matches your filter.
+    </div>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script>
+(function () {
+    const table   = document.getElementById('hwTable');
+    if (!table) return;
+
+    const rows    = Array.from(table.querySelectorAll('tbody tr.hw-row'));
+    const fTitle   = document.getElementById('filterTitle');
+    const fSubject = document.getElementById('filterSubject');
+    const fPub     = document.getElementById('filterPub');
+    const noMatch  = document.getElementById('noMatch');
+
+    // ── Filtering ───────────────────────────────────────────────
+    function applyFilters() {
+        const titleQ   = fTitle.value.trim().toLowerCase();
+        const subjectQ = fSubject.value.trim().toLowerCase();
+        const pubQ     = fPub.value;
+
+        let shown = 0;
+        rows.forEach(row => {
+            const title   = (row.dataset.title   || '').toLowerCase();
+            const subject = (row.dataset.subject || '').toLowerCase();
+            const pub     = row.dataset.pub || '';
+
+            const ok = (!titleQ   || title.includes(titleQ))
+                    && (!subjectQ || subject.includes(subjectQ))
+                    && (!pubQ     || pub === pubQ);
+
+            row.style.display = ok ? '' : 'none';
+            if (ok) shown++;
+        });
+        noMatch.style.display = shown === 0 ? 'block' : 'none';
+    }
+
+    [fTitle, fSubject, fPub].forEach(el => {
+        el.addEventListener('input',  applyFilters);
+        el.addEventListener('change', applyFilters);
+    });
+
+    // ── Sorting ─────────────────────────────────────────────────
+    const tbody      = table.querySelector('tbody');
+    const sortHdrs   = table.querySelectorAll('th.sortable');
+    let sortKey = null, sortDir = 1;
+
+    function rowVal(row, key) {
+        switch (key) {
+            case 'title':   return (row.dataset.title   || '').toLowerCase();
+            case 'subject': return (row.dataset.subject || '').toLowerCase();
+            case 'due':     return row.dataset.due || '';
+            case 'qpa':     return parseInt(row.dataset.qpa || '0', 10);
+            case 'pub':     return row.dataset.pub || '';
+            default:        return '';
+        }
+    }
+
+    function applySort() {
+        if (!sortKey) return;
+        const sorted = rows.slice().sort((a, b) => {
+            const av = rowVal(a, sortKey), bv = rowVal(b, sortKey);
+            if (av < bv) return -sortDir;
+            if (av > bv) return  sortDir;
+            return 0;
+        });
+        sorted.forEach(r => tbody.appendChild(r));
+        sortHdrs.forEach(th => {
+            th.classList.remove('sort-asc', 'sort-desc');
+            if (th.dataset.sort === sortKey)
+                th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+        });
+    }
+
+    sortHdrs.forEach(th => {
+        th.addEventListener('click', () => {
+            const key = th.dataset.sort;
+            sortDir = (sortKey === key) ? -sortDir : 1;
+            sortKey = key;
+            applySort();
+        });
+    });
+})();
+</script>
 </body>
 </html>

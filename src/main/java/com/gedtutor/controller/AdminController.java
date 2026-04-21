@@ -19,8 +19,11 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/admin")
@@ -360,6 +363,56 @@ public class AdminController {
         homeworkService.delete(id);
         ra.addFlashAttribute("message", "Homework deleted.");
         return "redirect:/admin/homework";
+    }
+
+    /**
+     * Per-homework question view: shows questions currently linked to this
+     * homework and lets the admin link/unlink questions from the bank.
+     */
+    @GetMapping("/homework/{id}/questions")
+    public String homeworkQuestions(@PathVariable Long id, Model model) {
+        Homework hw = homeworkService.findById(id);
+        List<Question> linked = quizService.getQuestions(hw);
+        // All questions in the subject bank for this homework's subject
+        List<Question> bank = hw.getSubject() != null
+                ? quizService.getQuestionsBySubject(hw.getSubject())
+                : Collections.emptyList();
+        // Only bank questions not already linked
+        java.util.Set<Long> linkedIds = linked.stream()
+                .map(Question::getId)
+                .collect(Collectors.toSet());
+        List<Question> available = bank.stream()
+                .filter(q -> !linkedIds.contains(q.getId()))
+                .toList();
+        model.addAttribute("hw", hw);
+        model.addAttribute("linked", linked);
+        model.addAttribute("available", available);
+        return "admin/homework-questions";
+    }
+
+    @PostMapping("/homework/{id}/questions/link")
+    public String linkQuestion(@PathVariable Long id,
+                               @RequestParam Long questionId,
+                               RedirectAttributes ra) {
+        Homework hw = homeworkService.findById(id);
+        Question q = quizService.findQuestionById(questionId);
+        if (!hw.getQuestions().contains(q)) {
+            hw.getQuestions().add(q);
+            homeworkService.saveRaw(hw);
+        }
+        ra.addFlashAttribute("message", "Question linked.");
+        return "redirect:/admin/homework/" + id + "/questions";
+    }
+
+    @PostMapping("/homework/{id}/questions/{qId}/unlink")
+    public String unlinkQuestion(@PathVariable Long id,
+                                 @PathVariable Long qId,
+                                 RedirectAttributes ra) {
+        Homework hw = homeworkService.findById(id);
+        hw.getQuestions().removeIf(q -> q.getId().equals(qId));
+        homeworkService.saveRaw(hw);
+        ra.addFlashAttribute("message", "Question removed.");
+        return "redirect:/admin/homework/" + id + "/questions";
     }
 
     @GetMapping("/homework/{id}/submissions")

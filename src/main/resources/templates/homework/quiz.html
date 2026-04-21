@@ -3,24 +3,36 @@
 <head th:replace="~{fragments/layout :: head('Quiz')}"></head>
 <style>
   .quiz-card { background:#fff; border:1px solid #ddd; border-radius:8px; padding:1.5rem; margin-bottom:1.5rem; }
-  .quiz-card.correct  { border-left:4px solid #28a745; background:#f0fff4; }
-  .quiz-card.incorrect{ border-left:4px solid #dc3545; background:#fff5f5; }
+  .quiz-card.correct   { border-left:4px solid #28a745; background:#f0fff4; }
+  .quiz-card.incorrect { border-left:4px solid #dc3545; background:#fff5f5; }
+  .quiz-card.skipped   { border-left:4px solid #ffc107; background:#fffdf0; opacity:0.85; }
   .choices label { display:block; padding:0.5rem 0.75rem; margin:0.3rem 0;
                    border:1px solid #ddd; border-radius:6px; cursor:pointer; }
   .choices label:hover { background:#f5f5f5; }
   .choices input[type=radio] { margin-right:0.5rem; }
   .feedback-box { margin-top:0.75rem; padding:0.75rem; border-radius:6px; display:none; }
-  .feedback-box.correct  { background:#d4edda; color:#155724; }
-  .feedback-box.incorrect{ background:#f8d7da; color:#721c24; }
-  .fill-input { width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:6px; font-size:1rem; }
-  .submit-btn { margin-top:0.5rem; }
+  .feedback-box.correct   { background:#d4edda; color:#155724; }
+  .feedback-box.incorrect { background:#f8d7da; color:#721c24; }
+  .feedback-box.skipped   { background:#fff3cd; color:#856404; }
+  .fill-input { width:100%; padding:0.5rem; border:1px solid #ddd; border-radius:6px; font-size:1rem; box-sizing:border-box; }
+  .action-row { display:flex; gap:0.5rem; margin-top:0.6rem; flex-wrap:wrap; }
+  .btn-skip { background:#f8f9fa; border:1px solid #ccc; color:#555; cursor:pointer;
+              padding:0.45rem 1rem; border-radius:6px; font-size:0.9rem; }
+  .btn-skip:hover { background:#e9ecef; }
+  .btn-skip:disabled { opacity:0.45; cursor:default; }
   .score-box { background:#e8f5e9; border:2px solid #28a745; border-radius:8px; padding:2rem; text-align:center; margin:2rem 0; }
   .score-box h2 { color:#28a745; font-size:2.5rem; margin:0; }
   .past-attempts { margin-top:2rem; }
   .attempt-row { display:flex; justify-content:space-between; padding:0.5rem 0; border-bottom:1px solid #eee; }
   .badge-type { background:#6c757d; color:#fff; padding:0.2rem 0.5rem; border-radius:4px; font-size:0.75rem; margin-right:0.5rem; }
-  #progressBar { height:8px; background:#e9ecef; border-radius:4px; margin-bottom:1.5rem; }
+  #progressBar { height:8px; background:#e9ecef; border-radius:4px; margin-bottom:0.5rem; }
   #progressFill { height:100%; background:#28a745; border-radius:4px; transition:width 0.3s; width:0%; }
+  #progressLabel { font-size:0.85rem; color:#666; margin-bottom:1.25rem; }
+  .submit-all-box { background:#f8f9fa; border:1px solid #dee2e6; border-radius:8px;
+                    padding:1.5rem; text-align:center; margin:1rem 0 2rem; }
+  .submit-all-box p { margin:0 0 1rem; color:#555; }
+  #submitAllBtn { font-size:1rem; padding:0.65rem 2rem; }
+  #submitAllBtn:disabled { opacity:0.5; cursor:default; }
 </style>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
@@ -74,6 +86,7 @@
     <!-- Quiz in progress -->
     <div th:if="${quizStarted}" id="quizArea">
         <div id="progressBar"><div id="progressFill"></div></div>
+        <div id="progressLabel">0 of <span id="totalLabel" th:text="${#lists.size(questions)}">0</span> completed</div>
 
         <div th:each="q, stat : ${questions}" class="quiz-card" th:id="'card-' + ${q.id}">
             <div style="margin-bottom:0.5rem; color:#888; font-size:0.9rem;">
@@ -83,40 +96,70 @@
             <p style="font-weight:600;" th:text="${q.questionText}"></p>
 
             <!-- Multiple Choice -->
-            <div th:if="${q.type.name() == 'MULTIPLE_CHOICE'}" class="choices" th:id="'choices-' + ${q.id}">
-                <label th:each="c : ${q.choices}">
-                    <input type="radio" th:name="'q-' + ${q.id}" th:value="${c.choiceText}"
-                           th:attr="data-qid=${q.id}, data-attemptid=${attemptId}"
-                           class="mc-option">
-                    <span th:text="${c.choiceText}"></span>
-                </label>
+            <div th:if="${q.type.name() == 'MULTIPLE_CHOICE'}" th:id="'input-area-' + ${q.id}">
+                <div class="choices" th:id="'choices-' + ${q.id}">
+                    <label th:each="c : ${q.choices}">
+                        <input type="radio" th:name="'q-' + ${q.id}" th:value="${c.choiceText}"
+                               th:attr="data-qid=${q.id}, data-attemptid=${attemptId}"
+                               class="mc-option">
+                        <span th:text="${c.choiceText}"></span>
+                    </label>
+                </div>
+                <div class="action-row">
+                    <button class="btn btn-primary submit-mc"
+                            th:attr="data-qid=${q.id}, data-attemptid=${attemptId}" disabled>
+                        Submit Answer
+                    </button>
+                    <button class="btn-skip skip-btn"
+                            th:attr="data-qid=${q.id}, data-attemptid=${attemptId}">
+                        Skip
+                    </button>
+                </div>
             </div>
 
             <!-- True / False -->
-            <div th:if="${q.type.name() == 'TRUE_FALSE'}" class="choices" th:id="'choices-' + ${q.id}">
-                <label>
-                    <input type="radio" th:name="'q-' + ${q.id}" value="true"
-                           th:attr="data-qid=${q.id}, data-attemptid=${attemptId}"
-                           class="mc-option">
-                    <span>True</span>
-                </label>
-                <label>
-                    <input type="radio" th:name="'q-' + ${q.id}" value="false"
-                           th:attr="data-qid=${q.id}, data-attemptid=${attemptId}"
-                           class="mc-option">
-                    <span>False</span>
-                </label>
+            <div th:if="${q.type.name() == 'TRUE_FALSE'}" th:id="'input-area-' + ${q.id}">
+                <div class="choices" th:id="'choices-' + ${q.id}">
+                    <label>
+                        <input type="radio" th:name="'q-' + ${q.id}" value="true"
+                               th:attr="data-qid=${q.id}, data-attemptid=${attemptId}"
+                               class="mc-option">
+                        <span>True</span>
+                    </label>
+                    <label>
+                        <input type="radio" th:name="'q-' + ${q.id}" value="false"
+                               th:attr="data-qid=${q.id}, data-attemptid=${attemptId}"
+                               class="mc-option">
+                        <span>False</span>
+                    </label>
+                </div>
+                <div class="action-row">
+                    <button class="btn btn-primary submit-mc"
+                            th:attr="data-qid=${q.id}, data-attemptid=${attemptId}" disabled>
+                        Submit Answer
+                    </button>
+                    <button class="btn-skip skip-btn"
+                            th:attr="data-qid=${q.id}, data-attemptid=${attemptId}">
+                        Skip
+                    </button>
+                </div>
             </div>
 
             <!-- Fill in the blank -->
-            <div th:if="${q.type.name() == 'FILL_BLANK'}" th:id="'fill-' + ${q.id}">
+            <div th:if="${q.type.name() == 'FILL_BLANK'}" th:id="'input-area-' + ${q.id}">
                 <input type="text" class="fill-input" placeholder="Type your answer..."
                        th:id="'fill-input-' + ${q.id}"
                        th:attr="data-qid=${q.id}, data-attemptid=${attemptId}">
-                <button class="btn btn-primary submit-btn fill-submit"
-                        th:attr="data-qid=${q.id}, data-attemptid=${attemptId}">
-                    Submit Answer
-                </button>
+                <div class="action-row">
+                    <button class="btn btn-primary fill-submit"
+                            th:attr="data-qid=${q.id}, data-attemptid=${attemptId}">
+                        Submit Answer
+                    </button>
+                    <button class="btn-skip skip-btn"
+                            th:attr="data-qid=${q.id}, data-attemptid=${attemptId}">
+                        Skip
+                    </button>
+                </div>
             </div>
 
             <!-- Feedback box -->
@@ -127,7 +170,15 @@
             </div>
         </div>
 
-        <!-- Score display (hidden until complete) -->
+        <!-- Submit All button — shown after all questions answered/skipped -->
+        <div class="submit-all-box" id="submitAllBox">
+            <p id="submitAllMsg">Answer or skip all questions to submit.</p>
+            <button id="submitAllBtn" class="btn btn-primary" disabled onclick="finishQuiz()">
+                Submit Quiz
+            </button>
+        </div>
+
+        <!-- Score display (hidden until submitted) -->
         <div class="score-box" id="scoreBox" style="display:none;">
             <h2 id="scoreText"></h2>
             <p id="scoreMsg"></p>
@@ -142,31 +193,54 @@
     const totalQuestions = /*[[${#lists.size(questions)}]]*/ 0;
     let answered = 0;
 
-    // CSRF token injected by the layout fragment. Spring Security rejects POSTs
-    // without it with 403 Forbidden.
     const csrfToken  = document.querySelector('meta[name="_csrf"]')?.content || '';
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
 
     function updateProgress() {
+        answered++;
         const pct = totalQuestions > 0 ? (answered / totalQuestions * 100) : 0;
         document.getElementById('progressFill').style.width = pct + '%';
-        if (answered === totalQuestions && totalQuestions > 0) {
-            finishQuiz();
+        document.getElementById('progressLabel').textContent =
+            answered + ' of ' + totalQuestions + ' completed';
+
+        // Enable Submit Quiz button when all questions are answered or skipped
+        if (answered >= totalQuestions) {
+            const btn = document.getElementById('submitAllBtn');
+            btn.disabled = false;
+            document.getElementById('submitAllMsg').textContent =
+                'All questions completed! Click below to submit your quiz.';
+            btn.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
     }
 
-    function showFeedback(qid, correct, correctAnswer, explanation) {
+    function lockQuestion(qid) {
+        const area = document.getElementById('input-area-' + qid);
+        if (!area) return;
+        // Disable all inputs and buttons inside the question
+        area.querySelectorAll('input, button').forEach(el => el.disabled = true);
+    }
+
+    function showFeedback(qid, type, correctAnswer, explanation) {
         const card = document.getElementById('card-' + qid);
         const box  = document.getElementById('feedback-' + qid);
-        card.classList.add(correct ? 'correct' : 'incorrect');
-        box.classList.add(correct ? 'correct' : 'incorrect');
-        box.querySelector('.feedback-label').textContent = correct ? '✅ Correct! ' : '❌ Incorrect. ';
-        box.querySelector('.feedback-answer').textContent = correct ? '' : 'Correct answer: ' + correctAnswer;
+        card.classList.add(type);
+        box.classList.add(type);
+        if (type === 'correct') {
+            box.querySelector('.feedback-label').textContent = '✅ Correct! ';
+            box.querySelector('.feedback-answer').textContent = '';
+        } else if (type === 'incorrect') {
+            box.querySelector('.feedback-label').textContent = '❌ Incorrect. ';
+            box.querySelector('.feedback-answer').textContent = 'Correct answer: ' + correctAnswer;
+        } else {
+            box.querySelector('.feedback-label').textContent = '⏭ Skipped. ';
+            box.querySelector('.feedback-answer').textContent = correctAnswer ? 'Correct answer: ' + correctAnswer : '';
+        }
         if (explanation) box.querySelector('.feedback-explanation').textContent = explanation;
         box.style.display = 'block';
     }
 
-    function submitAnswer(qid, attemptId, answer) {
+    function submitAnswer(qid, attemptId, answer, isSkip) {
+        lockQuestion(qid);
         const headers = {'Content-Type': 'application/x-www-form-urlencoded'};
         if (csrfToken) headers[csrfHeader] = csrfToken;
         fetch('/quiz/attempt/' + attemptId + '/answer', {
@@ -179,52 +253,76 @@
             return r.json();
         })
         .then(data => {
-            showFeedback(qid, data.correct, data.correctAnswer, data.explanation);
-            answered++;
+            if (isSkip) {
+                showFeedback(qid, 'skipped', data.correctAnswer, data.explanation);
+            } else {
+                showFeedback(qid, data.correct ? 'correct' : 'incorrect', data.correctAnswer, data.explanation);
+            }
             updateProgress();
         })
         .catch(err => {
             console.error('submitAnswer failed:', err);
-            alert('Could not submit answer: ' + err.message + '. Try refreshing and logging in again.');
+            alert('Could not submit answer. Try refreshing and logging in again.');
         });
     }
 
-    // Multiple choice & True/False: answer on click
+    // ── Multiple Choice & True/False: enable Submit button when radio selected ──
     document.querySelectorAll('.mc-option').forEach(radio => {
         radio.addEventListener('change', function() {
             const qid = this.dataset.qid;
-            const attemptId = this.dataset.attemptid;
-            // Disable all options for this question
-            document.querySelectorAll('input[name="q-' + qid + '"]').forEach(r => r.disabled = true);
-            submitAnswer(qid, attemptId, this.value);
+            const submitBtn = document.querySelector('.submit-mc[data-qid="' + qid + '"]');
+            if (submitBtn) submitBtn.disabled = false;
         });
     });
 
-    // Fill in the blank: answer on button click or Enter
+    // ── Submit Answer button (MC / T/F) ──
+    document.querySelectorAll('.submit-mc').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const qid = this.dataset.qid;
+            const attemptId = this.dataset.attemptid;
+            const selected = document.querySelector('input[name="q-' + qid + '"]:checked');
+            if (!selected) return;
+            submitAnswer(qid, attemptId, selected.value, false);
+        });
+    });
+
+    // ── Submit Answer button (Fill in the blank) ──
     document.querySelectorAll('.fill-submit').forEach(btn => {
         btn.addEventListener('click', function() {
             const qid = this.dataset.qid;
             const attemptId = this.dataset.attemptid;
             const input = document.getElementById('fill-input-' + qid);
-            if (!input.value.trim()) return;
-            input.disabled = true;
-            this.disabled = true;
-            submitAnswer(qid, attemptId, input.value.trim());
+            if (!input || !input.value.trim()) return;
+            submitAnswer(qid, attemptId, input.value.trim(), false);
         });
     });
 
+    // Enter key on fill-in-the-blank inputs
     document.querySelectorAll('.fill-input').forEach(input => {
         input.addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 const qid = this.dataset.qid;
-                document.querySelector('.fill-submit[data-qid="' + qid + '"]').click();
+                document.querySelector('.fill-submit[data-qid="' + qid + '"]')?.click();
             }
         });
     });
 
+    // ── Skip button ──
+    document.querySelectorAll('.skip-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const qid = this.dataset.qid;
+            const attemptId = this.dataset.attemptid;
+            submitAnswer(qid, attemptId, '', true);
+        });
+    });
+
+    // ── Final submit (called by Submit Quiz button) ──
     function finishQuiz() {
         const attemptId = document.querySelector('[data-attemptid]')?.dataset?.attemptid;
         if (!attemptId) return;
+        const submitBtn = document.getElementById('submitAllBtn');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting…';
         const headers = {};
         if (csrfToken) headers[csrfHeader] = csrfToken;
         fetch('/quiz/attempt/' + attemptId + '/complete', { method: 'POST', headers: headers })
@@ -233,6 +331,7 @@
             return r.json();
         })
         .then(data => {
+            document.getElementById('submitAllBox').style.display = 'none';
             const box = document.getElementById('scoreBox');
             document.getElementById('scoreText').textContent = data.score + ' / ' + data.total;
             let msg = data.percentage >= 80 ? '🎉 Excellent work!' :
@@ -240,6 +339,11 @@
             document.getElementById('scoreMsg').textContent = msg + ' (' + data.percentage + '%)';
             box.style.display = 'block';
             box.scrollIntoView({ behavior: 'smooth' });
+        })
+        .catch(err => {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Quiz';
+            alert('Could not submit quiz: ' + err.message);
         });
     }
 </script>

@@ -111,6 +111,13 @@ public class HomeworkService {
         hw.setQuestions(new ArrayList<>(bank.subList(0, take)));
     }
 
+    /** Persist a Homework entity directly — used when only the questions
+     *  collection changes (link / unlink from the bank). */
+    @Transactional
+    public Homework saveRaw(Homework hw) {
+        return homeworkRepository.save(hw);
+    }
+
     /**
      * How many bank questions the homework ended up linked to. Useful for
      * surfacing "you asked for 10 but only 7 were available" in the UI.
