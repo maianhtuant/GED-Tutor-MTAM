@@ -263,6 +263,22 @@ public class AdminController {
         return "redirect:/admin/users";
     }
 
+    @PostMapping("/users/create")
+    public String createUser(@RequestParam String username,
+                             @RequestParam String email,
+                             @RequestParam(required = false) String fullName,
+                             @RequestParam String password,
+                             @RequestParam Role role,
+                             RedirectAttributes ra) {
+        try {
+            userService.createUser(username, email, fullName, password, role);
+            ra.addFlashAttribute("message", "User \"" + username + "\" created successfully.");
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/admin/users";
+    }
+
     @PostMapping("/users/{id}/delete")
     public String deleteUser(@PathVariable Long id, RedirectAttributes ra) {
         userService.delete(id);

@@ -79,6 +79,25 @@ public class UserService {
     }
 
     @Transactional
+    public User createUser(String username, String email, String fullName,
+                           String password, Role role) {
+        if (userRepository.existsByUsername(username)) {
+            throw new IllegalArgumentException("Username is already taken.");
+        }
+        if (userRepository.existsByEmail(email)) {
+            throw new IllegalArgumentException("Email is already registered.");
+        }
+        User user = new User();
+        user.setUsername(username.trim());
+        user.setEmail(email.trim());
+        user.setFullName(fullName != null ? fullName.trim() : null);
+        user.setPassword(passwordEncoder.encode(password));
+        user.setRole(role != null ? role : Role.STUDENT);
+        user.setEnabled(true);
+        return userRepository.save(user);
+    }
+
+    @Transactional
     public void delete(Long id) {
         userRepository.deleteById(id);
     }
