@@ -9,7 +9,9 @@
     <p class="lead">Watch bite-sized video lessons across Math, Science, Social Studies, and Language Arts, then practice with homework assignments.</p>
     <div class="cta">
         <a th:href="@{/videos}" class="btn btn-primary">Browse Videos</a>
-        <a th:href="@{/register}" class="btn">Create a free account</a>
+        <a th:href="@{/register}" class="btn"
+           xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+           sec:authorize="!isAuthenticated()">Create a free account</a>
     </div>
 
     <section class="subjects">
