@@ -35,6 +35,13 @@ public class Video {
     @Column(length = 20)
     private String provider;
 
+    /**
+     * Sub-subject / course category (e.g. "GED", "Calculus 1", "Pre-Calculus").
+     * Optional — videos without a category appear under "General".
+     */
+    @Column(length = 100)
+    private String category;
+
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     @JoinColumn(name = "subject_id", nullable = false)
     private Subject subject;
@@ -84,6 +91,9 @@ public class Video {
 
     public String getProvider() { return provider; }
     public void setProvider(String provider) { this.provider = provider; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 
     public Subject getSubject() { return subject; }
     public void setSubject(Subject subject) { this.subject = subject; }

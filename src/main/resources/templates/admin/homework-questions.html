@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Homework Questions')}"></head>
+<style>
+  .section-box { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:1.5rem; margin-bottom:2rem; }
+  .section-box h2 { margin-top:0; font-size:1.1rem; color:#374151; }
+  .q-row td { padding:0.55rem 0.75rem; border-bottom:1px solid #f0f0f0; vertical-align:middle; }
+  .q-row:last-child td { border-bottom:none; }
+  .badge-type { background:#eef2ff; color:#4338ca; padding:0.2rem 0.55rem; border-radius:999px; font-size:0.75rem; font-weight:500; }
+  .empty-hint { color:#888; font-style:italic; padding:0.75rem 0; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <a th:href="@{/admin/homework}" class="back-link">&larr; Back to Homework</a>
+  <h1 th:text="'Questions — ' + ${hw.title}">Questions</h1>
+  <p class="muted" th:if="${hw.subject != null}"
+     th:text="'Subject: ' + ${hw.subject.name}"></p>
+
+  <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+
+  <!-- ── Linked questions ── -->
+  <div class="section-box">
+    <h2>Linked Questions (<span th:text="${#lists.size(linked)}">0</span>)</h2>
+
+    <div th:if="${#lists.isEmpty(linked)}" class="empty-hint">
+      No questions linked yet. Add some from the bank below.
+    </div>
+
+    <table class="table" th:if="${!#lists.isEmpty(linked)}" style="width:100%">
+      <thead>
+        <tr>
+          <th style="width:12%">Type</th>
+          <th>Question</th>
+          <th style="width:18%">Correct Answer</th>
+          <th style="width:10%"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="q : ${linked}" class="q-row">
+          <td>
+            <span class="badge-type"
+                  th:text="${q.type.name() == 'MULTIPLE_CHOICE' ? 'MC'
+                           : (q.type.name() == 'TRUE_FALSE' ? 'T/F' : 'Fill')}">MC</span>
+          </td>
+          <td th:text="${q.questionText}">Question text</td>
+          <td th:text="${q.correctAnswer}">Answer</td>
+          <td>
+            <form th:action="@{|/admin/homework/${hw.id}/questions/${q.id}/unlink|}" method="post"
+                  onsubmit="return confirm('Remove this question from the homework?');">
+              <button type="submit" class="btn btn-danger" style="padding:0.2rem 0.65rem;font-size:0.82rem;">Remove</button>
+            </form>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── Available from bank ── -->
+  <div class="section-box">
+    <h2>Add from Question Bank (<span th:text="${#lists.size(available)}">0</span> available)</h2>
+
+    <div th:if="${#lists.isEmpty(available)}" class="empty-hint">
+      No more questions available in this subject's bank.
+      <a th:href="@{/admin/questions/new}">Add questions to the bank</a>.
+    </div>
+
+    <table class="table" th:if="${!#lists.isEmpty(available)}" style="width:100%">
+      <thead>
+        <tr>
+          <th style="width:12%">Type</th>
+          <th>Question</th>
+          <th style="width:18%">Correct Answer</th>
+          <th style="width:10%"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr th:each="q : ${available}" class="q-row">
+          <td>
+            <span class="badge-type"
+                  th:text="${q.type.name() == 'MULTIPLE_CHOICE' ? 'MC'
+                           : (q.type.name() == 'TRUE_FALSE' ? 'T/F' : 'Fill')}">MC</span>
+          </td>
+          <td th:text="${q.questionText}">Question text</td>
+          <td th:text="${q.correctAnswer}">Answer</td>
+          <td>
+            <form th:action="@{|/admin/homework/${hw.id}/questions/link|}" method="post">
+              <input type="hidden" name="questionId" th:value="${q.id}">
+              <button type="submit" class="btn btn-primary" style="padding:0.2rem 0.65rem;font-size:0.82rem;">Add</button>
+            </form>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div style="margin-top:1rem;">
+    <a th:href="@{/admin/questions/new}" class="btn btn-primary">+ New question to bank</a>
+    <a th:href="@{/admin/homework}" class="btn" style="margin-left:0.5rem;">Back to Homework</a>
+  </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

@@ -16,6 +16,8 @@ public class HomeworkForm {
     @NotNull
     private Long subjectId;
 
+    private String category;
+
     private Long videoId;
 
     private LocalDateTime dueDate;
@@ -53,6 +55,9 @@ public class HomeworkForm {
 
     public Long getSubjectId() { return subjectId; }
     public void setSubjectId(Long subjectId) { this.subjectId = subjectId; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 
     public Long getVideoId() { return videoId; }
     public void setVideoId(Long videoId) { this.videoId = videoId; }

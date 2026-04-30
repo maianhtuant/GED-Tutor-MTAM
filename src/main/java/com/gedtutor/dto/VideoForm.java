@@ -22,6 +22,9 @@ public class VideoForm {
     @NotNull
     private Long subjectId;
 
+    @Size(max = 100)
+    private String category;
+
     @NotNull
     private VideoVisibility visibility;
 
@@ -41,6 +44,9 @@ public class VideoForm {
 
     public Long getSubjectId() { return subjectId; }
     public void setSubjectId(Long subjectId) { this.subjectId = subjectId; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 
     public VideoVisibility getVisibility() { return visibility; }
     public void setVisibility(VideoVisibility visibility) { this.visibility = visibility; }

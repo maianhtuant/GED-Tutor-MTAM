@@ -31,6 +31,13 @@ public class Homework {
     @JoinColumn(name = "video_id")
     private Video video;
 
+    /**
+     * Sub-subject / course category (e.g. "GED", "Calculus 1").
+     * Groups this homework inside its subject tab on the student page.
+     */
+    @Column(length = 100)
+    private String category;
+
     private LocalDateTime dueDate;
 
     @Column(nullable = false)
@@ -132,6 +139,9 @@ public class Homework {
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
 
     public List<Question> getQuestions() { return questions; }
     public void setQuestions(List<Question> questions) { this.questions = questions; }

@@ -4,6 +4,7 @@ import com.gedtutor.model.Homework;
 import com.gedtutor.model.HomeworkSubmission;
 import com.gedtutor.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -19,4 +20,8 @@ public interface HomeworkSubmissionRepository extends JpaRepository<HomeworkSubm
 
     /** Used during homework delete to clear dependent submissions. */
     List<HomeworkSubmission> findByHomework(Homework homework);
+
+    @Modifying
+    @Query("DELETE FROM HomeworkSubmission s WHERE s.homework = :homework")
+    void deleteByHomework(@Param("homework") Homework homework);
 }

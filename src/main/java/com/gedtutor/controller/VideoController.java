@@ -1,5 +1,6 @@
 package com.gedtutor.controller;
 
+import com.gedtutor.model.Subject;
 import com.gedtutor.model.Video;
 import com.gedtutor.model.VideoVisibility;
 import com.gedtutor.service.SubjectService;
@@ -11,6 +12,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 
 @Controller
 @RequestMapping("/videos")
@@ -25,14 +31,30 @@ public class VideoController {
     }
 
     @GetMapping
-    public String list(@RequestParam(required = false) Long subjectId, Model model) {
-        model.addAttribute("videos", videoService.listPublicBySubject(subjectId));
-        // Show ALL subjects in the filter dropdown (including deactivated ones) so
-        // that videos under a deactivated subject are still discoverable on the
-        // public videos page. Deactivation only hides a subject from the admin
-        // "new video / new homework" pickers.
-        model.addAttribute("subjects", subjectService.listAll());
-        model.addAttribute("selectedSubjectId", subjectId);
+    public String list(Model model) {
+        List<Subject> subjects  = subjectService.listAll();
+        List<Video>   allVideos = videoService.listPublic();
+
+        // subjectId → (category → videos)  — used by the tab panels
+        // Category "General" catches videos with no category set.
+        Map<Long, Map<String, List<Video>>> videosByCat = new LinkedHashMap<>();
+        Map<Long, Integer> videoCountBySubject = new LinkedHashMap<>();
+        for (Subject s : subjects) {
+            List<Video> svids = videoService.listPublicBySubject(s.getId());
+            Map<String, List<Video>> byCategory = new TreeMap<>();
+            for (Video v : svids) {
+                String cat = (v.getCategory() != null && !v.getCategory().isBlank())
+                        ? v.getCategory().trim() : "General";
+                byCategory.computeIfAbsent(cat, k -> new java.util.ArrayList<>()).add(v);
+            }
+            videosByCat.put(s.getId(), byCategory);
+            videoCountBySubject.put(s.getId(), svids.size());
+        }
+
+        model.addAttribute("subjects",            subjects);
+        model.addAttribute("allVideos",           allVideos);
+        model.addAttribute("videosByCat",         videosByCat);
+        model.addAttribute("videoCountBySubject", videoCountBySubject);
         return "videos";
     }
 
