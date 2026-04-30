@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Math Practice')}"></head>
+<style>
+  .practice-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 1.75rem;
+    max-width: 640px;
+    margin: 1.5rem auto;
+  }
+  .practice-card.correct   { border-left: 4px solid #28a745; background: #f0fff4; }
+  .practice-card.incorrect { border-left: 4px solid #dc3545; background: #fff5f5; }
+  .question-text {
+    font-size: 1.4rem;
+    font-weight: 500;
+    margin: 0 0 1rem 0;
+    font-family: "Cambria", "Times New Roman", serif;
+  }
+  .hint {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 0.75rem;
+  }
+  .answer-input {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1rem;
+    box-sizing: border-box;
+  }
+  .feedback {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    border-radius: 6px;
+  }
+  .feedback.correct   { background: #d4edda; color: #155724; }
+  .feedback.incorrect { background: #f8d7da; color: #721c24; }
+  .video-link {
+    display: inline-block;
+    margin-top: 1rem;
+    color: #0d6efd;
+    text-decoration: none;
+  }
+  .video-link:hover { text-decoration: underline; }
+  .actions { margin-top: 1rem; display: flex; gap: 0.5rem; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <h1>Math Practice</h1>
+  <p class="hint">A new random problem every time. Submit your answer to see if you got it right.</p>
+
+  <div th:classappend="${result != null} ? (${result.correct} ? ' correct' : ' incorrect') : ''" class="practice-card">
+
+    <p class="question-text" style="white-space: pre-wrap;" th:text="${problem.questionText}">Solve for x: 2x^2 + 3x - 5 = 0</p>
+
+    <p class="hint" th:if="${problem.shape.name() == 'SCALAR' and !problem.hasSpecialAnswer()}">
+      One answer. Decimals or fractions are fine: <code>2.5</code> or <code>5/2</code>.
+    </p>
+    <p class="hint" th:if="${problem.shape.name() == 'UNORDERED'}">
+      Two answers — separate with a comma, in any order. e.g. <code>2, -3</code>.
+    </p>
+    <p class="hint" th:if="${problem.shape.name() == 'ORDERED'}">
+      Two values in order: x first, then y. e.g. <code>2, 3</code> or <code>(2, 3)</code>.
+    </p>
+    <p class="hint" th:if="${problem.hasSpecialAnswer()}">
+      If the equation has no normal answer, type <code th:text="${problem.specialAnswer}">no real solution</code>.
+    </p>
+
+    <form th:action="@{/practice/math/submit}" method="post">
+      <input type="hidden" name="token" th:value="${token}"/>
+      <input type="text" name="answer" class="answer-input"
+             autocomplete="off" autofocus
+             th:value="${result != null ? result.submitted : ''}"
+             placeholder="Your answer"/>
+      <div class="actions">
+        <button type="submit" class="btn btn-primary">Submit</button>
+        <a th:href="@{/practice/math}" class="btn">Try another</a>
+      </div>
+    </form>
+
+    <div th:if="${result != null}"
+         th:classappend="${result.correct} ? ' correct' : ' incorrect'"
+         class="feedback">
+      <strong th:text="${result.correct} ? 'Correct!' : 'Not quite.'">Correct!</strong>
+      <span th:text="' ' + ${result.message}"></span>
+      <div th:if="${!result.correct}" style="margin-top:0.4rem;">
+        Expected: <strong th:text="${result.expected}">x = 1 or x = -2</strong>
+      </div>
+    </div>
+
+    <a th:if="${problem.videoUrl != null and !#strings.isEmpty(problem.videoUrl)}"
+       th:href="${problem.videoUrl}" target="_blank" rel="noopener"
+       class="video-link">
+      Watch the lesson video for this kind of problem &rarr;
+    </a>
+  </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

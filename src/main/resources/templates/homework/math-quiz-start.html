@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${hw.title})}"></head>
+<style>
+  .start-card {
+    background: #fff; border: 1px solid #ddd; border-radius: 8px;
+    padding: 1.5rem; max-width: 720px; margin: 1.5rem auto;
+  }
+  .past-attempts { margin-top: 1.25rem; }
+  .attempt-row {
+    display: flex; justify-content: space-between;
+    padding: 0.5rem 0; border-bottom: 1px solid #eee;
+  }
+  .muted { color: #666; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <a th:href="@{/homework}" class="back-link">&larr; All quizzes</a>
+  <div class="start-card">
+    <h1 th:text="${hw.title}">Math Quiz</h1>
+    <p class="muted" th:if="${hw.subject != null}"
+       th:text="'Subject: ' + ${hw.subject.name}">Subject: Math</p>
+    <p th:if="${hw.instructions}" th:text="${hw.instructions}">Instructions.</p>
+
+    <p>
+      Attempts: <strong
+        th:text="${maxAttempts >= 2147483647} ? ${attemptCount} : (${attemptCount} + ' / ' + ${maxAttempts})">0</strong>
+      <span th:if="${maxAttempts >= 2147483647}" class="muted">(unlimited)</span>
+    </p>
+
+    <p>
+      This quiz auto-generates
+      <b th:text="${hw.mathQuestionCount}">40</b> random math problems
+      drawn from every problem type (linear, quadratic, percentages, geometry, etc.).
+      Answer in fill-in-the-blank style — decimals or fractions both work.
+    </p>
+
+    <form th:action="@{|/quiz/${hw.id}/start|}" method="post" th:if="${canAttempt}">
+      <button type="submit" class="btn btn-primary">Start Quiz</button>
+    </form>
+    <div th:unless="${canAttempt}" class="alert alert-danger">
+      You have used all your attempts for this quiz.
+    </div>
+
+    <div class="past-attempts" th:if="${!#lists.isEmpty(attempts)}">
+      <h3>Your previous attempts</h3>
+      <div th:each="a : ${attempts}" class="attempt-row">
+        <span>Attempt #<span th:text="${a.attemptNumber}"></span></span>
+        <span th:text="${(a.score != null ? a.score : 0)} + ' / ' + ${(a.totalQuestions != null ? a.totalQuestions : 0)}
+              + ' (' + (${a.score != null and a.totalQuestions != null and a.totalQuestions > 0} ? ${a.score * 100 / a.totalQuestions} : 0) + '%)'">
+        </span>
+        <span class="muted"
+              th:text="${a.completedAt != null ? #temporals.format(a.completedAt, 'MMM d, yyyy HH:mm') : 'In progress'}">
+        </span>
+      </div>
+    </div>
+  </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

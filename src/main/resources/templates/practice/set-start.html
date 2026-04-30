@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${set.title})}"></head>
+<style>
+  .start-card {
+    background: #fff; border: 1px solid #ddd; border-radius: 8px;
+    padding: 1.5rem; max-width: 720px; margin: 1.5rem auto;
+  }
+  .item-row {
+    display: flex; justify-content: space-between;
+    padding: 0.4rem 0; border-bottom: 1px solid #eee;
+  }
+  .item-row:last-child { border-bottom: none; }
+  .muted { color: #666; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <a th:href="@{/practice}" class="back-link">&larr; All practice</a>
+  <div class="start-card">
+    <h1 th:text="${set.title}">Set title</h1>
+    <p class="muted" th:if="${set.subject != null}"
+       th:text="'Subject: ' + ${set.subject.name}">Subject: Math</p>
+    <p th:if="${set.description}" th:text="${set.description}">Description.</p>
+
+    <h3>What's in this set</h3>
+    <div th:if="${#lists.isEmpty(set.items)}" class="muted">
+      No items yet — ask an admin to add some.
+    </div>
+    <div th:each="it : ${set.items}" class="item-row">
+      <span th:text="${it.template.label}">Template</span>
+      <span class="muted" th:text="${it.questionCount} + ' question(s)'">5 questions</span>
+    </div>
+
+    <p style="margin-top:1rem;">
+      Total: <b th:text="${set.totalQuestionCount()}">10</b> questions.
+    </p>
+
+    <form th:action="@{|/practice/sets/${set.id}/start|}" method="post"
+          th:if="${!#lists.isEmpty(set.items)}">
+      <button type="submit" class="btn btn-primary">Start practice</button>
+    </form>
+  </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

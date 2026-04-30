@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Practice')}"></head>
+<style>
+  .hub-card {
+    background: #fff; border: 1px solid #ddd; border-radius: 8px;
+    padding: 1.25rem; margin: 1rem 0;
+  }
+  .hub-card h3 { margin: 0 0 0.5rem 0; }
+  .hub-card .muted { color: #666; font-size: 0.9rem; }
+  .set-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0.6rem 0; border-bottom: 1px solid #eee;
+  }
+  .set-row:last-child { border-bottom: none; }
+  .pill {
+    background: #eef; color: #336; padding: 0.15rem 0.5rem; border-radius: 999px;
+    font-size: 0.8rem; margin-left: 0.5rem;
+  }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <h1>Practice</h1>
+  <p class="muted">Drill GED math problems — quick random or curated sets.</p>
+
+  <div class="hub-card">
+    <h3>Quick random math</h3>
+    <p class="muted">A new randomly-chosen problem each refresh — any kind, any difficulty.</p>
+    <a th:href="@{/practice/math}" class="btn btn-primary">Start quick practice</a>
+  </div>
+
+  <div class="hub-card">
+    <h3>Practice sets</h3>
+    <p class="muted" th:if="${#lists.isEmpty(sets)}">
+      No practice sets yet. An admin can create them from the
+      <a th:href="@{/admin/practice-sets}">admin page</a>.
+    </p>
+    <div th:each="s : ${sets}" class="set-row">
+      <div>
+        <a th:href="@{|/practice/sets/${s.id}|}"
+           th:text="${s.title}">A practice set</a>
+        <span class="pill" th:text="${s.totalQuestionCount()} + ' questions'">10 questions</span>
+        <span class="pill" th:if="${s.subject != null}" th:text="${s.subject.name}">Math</span>
+      </div>
+      <a th:href="@{|/practice/sets/${s.id}|}" class="btn">Open</a>
+    </div>
+  </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

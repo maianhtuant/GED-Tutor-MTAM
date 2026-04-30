@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Practice Sets — Admin')}"></head>
+<style>
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 0.6rem; border-bottom: 1px solid #eee; text-align: left; }
+  .pill { background:#eef; color:#336; padding:0.15rem 0.5rem; border-radius:999px; font-size:0.8rem; }
+  .pill.inactive { background:#fee; color:#933; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <a th:href="@{/admin}" class="back-link">&larr; Admin</a>
+  <h1>Practice Sets</h1>
+
+  <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+
+  <p style="display:flex; gap:0.5rem; align-items:center; flex-wrap:wrap;">
+    <a th:href="@{/admin/practice-sets/new}" class="btn btn-primary">+ New practice set</a>
+
+    <!-- Quick "math quiz with N random questions" creator. -->
+    <form th:action="@{/admin/practice-sets/quick-mix}" method="post"
+          style="display:inline-flex; gap:0.5rem; align-items:center; margin:0;">
+      <input type="text" name="title" placeholder="Math Quiz — 40 questions" maxlength="200"
+             style="padding:0.4rem 0.5rem; border:1px solid #ccc; border-radius:6px; width:14rem;"/>
+      <input type="number" name="totalQuestions" value="40" min="1" max="200"
+             style="padding:0.4rem; border:1px solid #ccc; border-radius:6px; width:5rem;"/>
+      <button type="submit" class="btn">Quick math quiz</button>
+    </form>
+  </p>
+  <p class="muted" style="margin-top:-0.25rem; margin-bottom:1rem; font-size:0.9rem;">
+    "Quick math quiz" creates a Practice Set with the chosen number of questions
+    spread evenly across every active template — Linear, Quadratic, System, Slope,
+    Function, Percentage, Proportion, Stats, Pythagorean, Area, Volume, Surface area, etc.
+  </p>
+
+  <table>
+    <thead>
+      <tr><th>Title</th><th>Subject</th><th>Items</th><th>Active</th><th>Actions</th></tr>
+    </thead>
+    <tbody>
+      <tr th:if="${#lists.isEmpty(sets)}">
+        <td colspan="5" class="muted">No practice sets yet.</td>
+      </tr>
+      <tr th:each="s : ${sets}">
+        <td><a th:href="@{|/admin/practice-sets/${s.id}/edit|}" th:text="${s.title}">Title</a></td>
+        <td th:text="${s.subject != null ? s.subject.name : ''}">Math</td>
+        <td th:text="${#lists.size(s.items)} + ' items, ' + ${s.totalQuestionCount()} + ' questions'">3 items, 30 questions</td>
+        <td>
+          <span th:if="${s.active}" class="pill">active</span>
+          <span th:unless="${s.active}" class="pill inactive">hidden</span>
+        </td>
+        <td>
+          <a th:href="@{|/admin/practice-sets/${s.id}/edit|}">Edit</a>
+          &middot;
+          <form th:action="@{|/admin/practice-sets/${s.id}/delete|}" method="post"
+                style="display:inline" onsubmit="return confirm('Delete this practice set?');">
+            <button type="submit" class="link-btn">Delete</button>
+          </form>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

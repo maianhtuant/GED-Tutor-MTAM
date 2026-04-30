@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Practice Set form')}"></head>
+<style>
+  .form-grid { display: grid; gap: 0.75rem; max-width: 720px; }
+  .form-grid label { font-weight: 500; }
+  .form-grid input[type=text], .form-grid textarea, .form-grid select {
+    width: 100%; padding: 0.5rem; border:1px solid #ccc; border-radius: 6px;
+    box-sizing: border-box;
+  }
+  .form-grid textarea { min-height: 90px; }
+  .item-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+  .item-table th, .item-table td { padding: 0.5rem; border-bottom: 1px solid #eee; text-align: left; }
+  .add-item-row { display: flex; gap: 0.5rem; align-items: end; margin-top: 0.5rem; }
+  .add-item-row > * { flex: 0 0 auto; }
+  .add-item-row .grow { flex-grow: 1; }
+  .muted { color: #666; }
+  .field-error { color: #c00; font-size: 0.85rem; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <a th:href="@{/admin/practice-sets}" class="back-link">&larr; All practice sets</a>
+  <h1 th:text="${form.id != null} ? 'Edit practice set' : 'New practice set'">Practice set</h1>
+
+  <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+
+  <form th:action="${form.id != null} ? @{|/admin/practice-sets/${form.id}/edit|} : @{/admin/practice-sets/new}"
+        method="post" th:object="${form}" class="form-grid">
+
+    <div>
+      <label>Title</label>
+      <input type="text" th:field="*{title}" required maxlength="200"/>
+      <span class="field-error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></span>
+    </div>
+
+    <div>
+      <label>Description</label>
+      <textarea th:field="*{description}" placeholder="What this practice set is for"></textarea>
+    </div>
+
+    <div>
+      <label>Subject (optional)</label>
+      <select th:field="*{subjectId}">
+        <option value="">(none)</option>
+        <option th:each="s : ${subjects}" th:value="${s.id}" th:text="${s.name}">Math</option>
+      </select>
+    </div>
+
+    <div>
+      <label class="inline">
+        <input type="checkbox" th:field="*{active}"/>
+        Active (visible to students)
+      </label>
+    </div>
+
+    <!-- Starter items (only on the create flow). -->
+    <div th:if="${form.id == null}" style="border-top:1px solid #eee; padding-top:1rem;">
+      <h3 style="margin:0 0 0.25rem 0;">Items</h3>
+      <p class="muted" style="margin:0 0 0.5rem 0;">
+        Pick which problem types to practice and how many questions of each.
+        You can change these later.
+      </p>
+
+      <div id="starterItems"></div>
+
+      <button type="button" id="addStarterRow" class="btn">+ Add another</button>
+    </div>
+
+    <div>
+      <button type="submit" class="btn btn-primary"
+              th:text="${form.id != null} ? 'Save changes' : 'Create'">Save</button>
+    </div>
+  </form>
+
+  <!-- Hidden template row for the starter-items section, used by the JS below. -->
+  <template id="starterRowTemplate">
+    <div class="starter-row" style="display:flex; gap:0.5rem; align-items:end; margin-bottom:0.5rem;">
+      <div style="flex:1;">
+        <label>Template</label>
+        <select name="starterTemplateId" required
+                style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:6px;">
+          <option th:each="t : ${templates}" th:value="${t.id}"
+                  th:text="${t.label} + ' (' + ${t.kind.name()} + ')'">Quadratic</option>
+        </select>
+      </div>
+      <div>
+        <label>Questions</label>
+        <input type="number" name="starterQuestionCount" value="5" min="1" max="100"
+               style="width:6rem; padding:0.5rem; border:1px solid #ccc; border-radius:6px;"/>
+      </div>
+      <div>
+        <button type="button" class="btn remove-starter">Remove</button>
+      </div>
+    </div>
+  </template>
+
+  <script th:if="${form.id == null}">
+    (function () {
+      const container = document.getElementById('starterItems');
+      const tpl       = document.getElementById('starterRowTemplate');
+      const addBtn    = document.getElementById('addStarterRow');
+
+      function addRow() {
+        const row = tpl.content.firstElementChild.cloneNode(true);
+        row.querySelector('.remove-starter').addEventListener('click', () => row.remove());
+        container.appendChild(row);
+      }
+      addBtn.addEventListener('click', addRow);
+      // Start with one row visible.
+      addRow();
+    })();
+  </script>
+
+  <!-- Items: only shown after the set has been created (i.e. we have an id and `set` is in the model). -->
+  <div th:if="${set != null}" style="margin-top: 2rem;">
+    <h2>Items</h2>
+    <p class="muted">Each item picks a math template and how many questions to generate from it.</p>
+
+    <table class="item-table">
+      <thead>
+        <tr><th>#</th><th>Template</th><th>Kind</th><th>Questions</th><th>Reorder</th><th>Remove</th></tr>
+      </thead>
+      <tbody>
+        <tr th:if="${#lists.isEmpty(set.items)}">
+          <td colspan="6" class="muted">No items yet — add one below.</td>
+        </tr>
+        <tr th:each="it, stat : ${set.items}">
+          <td th:text="${stat.index + 1}">1</td>
+          <td th:text="${it.template.label}">Template</td>
+          <td th:text="${it.template.kind.name()}">QUADRATIC</td>
+          <td th:text="${it.questionCount}">5</td>
+          <td>
+            <form th:action="@{|/admin/practice-sets/${set.id}/items/${it.id}/move|}" method="post" style="display:inline;">
+              <input type="hidden" name="delta" value="-1"/>
+              <button type="submit" class="link-btn" th:disabled="${stat.first}">↑</button>
+            </form>
+            <form th:action="@{|/admin/practice-sets/${set.id}/items/${it.id}/move|}" method="post" style="display:inline;">
+              <input type="hidden" name="delta" value="1"/>
+              <button type="submit" class="link-btn" th:disabled="${stat.last}">↓</button>
+            </form>
+          </td>
+          <td>
+            <form th:action="@{|/admin/practice-sets/${set.id}/items/${it.id}/delete|}" method="post"
+                  onsubmit="return confirm('Remove this item?');" style="display:inline;">
+              <button type="submit" class="link-btn">Delete</button>
+            </form>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:1.25rem;">Add an item</h3>
+    <form th:action="@{|/admin/practice-sets/${set.id}/items|}" method="post" class="add-item-row">
+      <div class="grow">
+        <label>Template</label>
+        <select name="templateId" required>
+          <option th:each="t : ${templates}" th:value="${t.id}"
+                  th:text="${t.label} + ' (' + ${t.kind.name()} + ')'">Quadratic</option>
+        </select>
+      </div>
+      <div>
+        <label>Questions</label>
+        <input type="number" name="questionCount" value="5" min="1" max="100"
+               style="width:6rem; padding:0.5rem; border:1px solid #ccc; border-radius:6px;"/>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary">Add</button>
+      </div>
+    </form>
+  </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

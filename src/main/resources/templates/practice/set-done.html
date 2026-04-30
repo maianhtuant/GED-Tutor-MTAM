@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Practice complete')}"></head>
+<style>
+  .done-card {
+    background: #fff; border: 1px solid #ddd; border-radius: 8px;
+    padding: 2rem; max-width: 640px; margin: 1.5rem auto;
+    text-align: center;
+  }
+  .score-big {
+    font-size: 3rem; color: #28a745; margin: 0.5rem 0;
+  }
+  .actions { margin-top: 1.25rem; display:flex; gap:0.5rem; justify-content:center; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <div class="done-card">
+    <h1>Practice complete</h1>
+    <p th:text="${set.title}" style="color:#666;">Set title</p>
+    <div class="score-big"
+         th:text="(${state != null ? state.totalCorrect : 0}) + ' / ' + (${state != null ? state.totalAsked : 0})">
+      0 / 0
+    </div>
+    <p th:if="${state != null and state.totalAsked > 0}"
+       th:text="'That is ' + (${state.totalCorrect * 100 / state.totalAsked}) + '%.'">
+      That is 0%.
+    </p>
+
+    <div class="actions">
+      <form th:action="@{|/practice/sets/${set.id}/start|}" method="post" style="margin:0;">
+        <button type="submit" class="btn btn-primary">Try again</button>
+      </form>
+      <a th:href="@{/practice}" class="btn">Back to practice</a>
+    </div>
+  </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

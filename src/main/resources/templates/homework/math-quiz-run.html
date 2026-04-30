@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${hw.title})}"></head>
+<style>
+  .quiz-card {
+    background:#fff; border:1px solid #ddd; border-radius:8px;
+    padding:1.5rem; margin-bottom:1.5rem;
+  }
+  .quiz-card.correct   { border-left:4px solid #28a745; background:#f0fff4; }
+  .quiz-card.incorrect { border-left:4px solid #dc3545; background:#fff5f5; }
+  .question-text {
+    font-size: 1.15rem; font-weight: 600; margin: 0 0 0.75rem 0;
+    white-space: pre-wrap;
+    font-family: "Cambria", "Times New Roman", serif;
+  }
+  .qmeta { color:#888; font-size:0.9rem; margin-bottom: 0.5rem; }
+  .badge-type {
+    background:#6c757d; color:#fff; padding:0.2rem 0.5rem;
+    border-radius:4px; font-size:0.75rem; margin-left:0.5rem;
+  }
+  .answer-input {
+    width:100%; padding:0.5rem 0.75rem;
+    border:1px solid #ccc; border-radius:6px; font-size:1rem;
+    box-sizing:border-box;
+  }
+  .submit-btn { margin-top:0.5rem; }
+  .feedback-box {
+    margin-top:0.75rem; padding:0.75rem 1rem; border-radius:6px; display:none;
+  }
+  .feedback-box.correct   { background:#d4edda; color:#155724; }
+  .feedback-box.incorrect { background:#f8d7da; color:#721c24; }
+  .hint { color:#666; font-size:0.85rem; margin-bottom:0.5rem; }
+  #progressBar { height:8px; background:#e9ecef; border-radius:4px; margin-bottom:1.5rem; }
+  #progressFill { height:100%; background:#28a745; border-radius:4px; transition:width 0.3s; width:0%; }
+  .score-box {
+    background:#e8f5e9; border:2px solid #28a745; border-radius:8px;
+    padding:2rem; text-align:center; margin:2rem 0; display:none;
+  }
+  .score-box h2 { color:#28a745; font-size:2.5rem; margin:0; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <a th:href="@{|/quiz/${hw.id}|}" class="back-link">&larr; Back</a>
+  <h1 th:text="${hw.title}">Math Quiz</h1>
+
+  <div style="display:flex; justify-content:space-between; color:#666; margin-bottom:0.5rem;">
+    <span>Total: <b th:text="${state.totalQuestions()}">0</b> questions</span>
+    <span>Score: <b id="scoreLine" th:text="'0 / 0'">0 / 0</b></span>
+  </div>
+  <div id="progressBar"><div id="progressFill"></div></div>
+
+  <div class="score-box" id="scoreBox">
+    <h2 id="scoreText">0 / 0</h2>
+    <p>You finished the quiz.</p>
+    <a th:href="@{|/quiz/${hw.id}|}" class="btn btn-primary">View Summary</a>
+  </div>
+
+  <div th:each="problem, stat : ${state.problems}"
+       class="quiz-card"
+       th:id="'card-' + ${stat.index}">
+
+    <div class="qmeta">
+      Question <span th:text="${stat.index + 1}">1</span>
+      of <span th:text="${state.totalQuestions()}">10</span>
+      <span class="badge-type" th:text="${problem.shape.name()}">SCALAR</span>
+    </div>
+
+    <p class="question-text" th:text="${problem.questionText}">Solve for x: 2x + 3 = 7</p>
+
+    <p class="hint" th:if="${problem.shape.name() == 'SCALAR' and !problem.hasSpecialAnswer()}">
+      Type one number. Decimals or fractions both work: <code>2.5</code> or <code>5/2</code>.
+    </p>
+    <p class="hint" th:if="${problem.shape.name() == 'UNORDERED'}">
+      Two answers — comma-separated, any order. e.g. <code>2, -3</code>.
+    </p>
+    <p class="hint" th:if="${problem.shape.name() == 'ORDERED'}">
+      Two values in order: x first, then y. e.g. <code>2, 3</code>.
+    </p>
+    <p class="hint" th:if="${problem.hasSpecialAnswer()}">
+      If the equation has no normal answer, type
+      <code th:text="${problem.specialAnswer}">no real solution</code>.
+    </p>
+
+    <input type="text" class="answer-input"
+           th:id="'answer-' + ${stat.index}"
+           th:attr="data-qidx=${stat.index}, data-token=${state.tokens[stat.index]}"
+           placeholder="Your answer..." autocomplete="off"/>
+    <button type="button" class="btn btn-primary submit-btn answer-submit"
+            th:attr="data-qidx=${stat.index}">Submit Answer</button>
+
+    <div class="feedback-box" th:id="'feedback-' + ${stat.index}">
+      <strong class="feedback-label"></strong>
+      <span class="feedback-answer"></span>
+    </div>
+  </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script th:inline="javascript">
+  const attemptId      = /*[[${attempt.id}]]*/ 0;
+  const totalQuestions = /*[[${state.totalQuestions()}]]*/ 0;
+  let answered     = 0;
+  let correctSoFar = 0;
+  let completed    = false;
+
+  const csrfToken  = document.querySelector('meta[name="_csrf"]')?.content || '';
+  const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+
+  function setProgress() {
+    const pct = totalQuestions > 0 ? (answered / totalQuestions * 100) : 0;
+    document.getElementById('progressFill').style.width = pct + '%';
+    document.getElementById('scoreLine').textContent = correctSoFar + ' / ' + answered;
+    if (answered === totalQuestions && totalQuestions > 0 && !completed) {
+      completed = true;
+      finishQuiz();
+    }
+  }
+
+  function showFeedback(qidx, correct, expected) {
+    const card = document.getElementById('card-' + qidx);
+    const box  = document.getElementById('feedback-' + qidx);
+    card.classList.add(correct ? 'correct' : 'incorrect');
+    box.classList.add(correct ? 'correct' : 'incorrect');
+    box.querySelector('.feedback-label').textContent = correct ? '✅ Correct! ' : '❌ Incorrect. ';
+    box.querySelector('.feedback-answer').textContent = correct ? '' : ('Expected: ' + expected);
+    box.style.display = 'block';
+  }
+
+  function submitAnswer(qidx) {
+    const input = document.getElementById('answer-' + qidx);
+    const token = input.getAttribute('data-token');
+    const value = input.value;
+    if (input.disabled) return;
+
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    if (csrfToken) headers[csrfHeader] = csrfToken;
+
+    fetch('/quiz/attempt/' + attemptId + '/math-answer', {
+      method: 'POST',
+      headers: headers,
+      body: 'questionIndex=' + qidx
+          + '&token=' + encodeURIComponent(token)
+          + '&answer=' + encodeURIComponent(value)
+    })
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(data => {
+      if (!data.ok) { alert(data.message || 'Could not grade.'); return; }
+      input.disabled = true;
+      document.querySelector('.answer-submit[data-qidx="' + qidx + '"]').disabled = true;
+      showFeedback(qidx, data.correct, data.expected);
+      answered     = data.totalAsked   ?? (answered + 1);
+      correctSoFar = data.totalCorrect ?? (correctSoFar + (data.correct ? 1 : 0));
+      setProgress();
+    })
+    .catch(err => {
+      console.error('submitAnswer failed:', err);
+      alert('Could not submit answer: ' + err.message + '. Try refreshing.');
+    });
+  }
+
+  function finishQuiz() {
+    const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+    if (csrfToken) headers[csrfHeader] = csrfToken;
+    fetch('/quiz/attempt/' + attemptId + '/complete', { method: 'POST', headers: headers })
+      .then(r => r.json())
+      .then(data => {
+        document.getElementById('scoreText').textContent = data.score + ' / ' + data.total;
+        const box = document.getElementById('scoreBox');
+        box.style.display = 'block';
+        box.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+      })
+      .catch(err => console.error('completeAttempt failed:', err));
+  }
+
+  document.querySelectorAll('.answer-submit').forEach(btn => {
+    btn.addEventListener('click', () =>
+      submitAnswer(parseInt(btn.getAttribute('data-qidx'), 10)));
+  });
+  document.querySelectorAll('.answer-input').forEach(input => {
+    input.addEventListener('keydown', evt => {
+      if (evt.key === 'Enter') {
+        evt.preventDefault();
+        submitAnswer(parseInt(input.getAttribute('data-qidx'), 10));
+      }
+    });
+  });
+</script>
+</body>
+</html>
