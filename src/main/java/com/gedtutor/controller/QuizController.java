@@ -1,9 +1,13 @@
 package com.gedtutor.controller;
 
+import com.gedtutor.dto.MathAnswerResult;
+import com.gedtutor.dto.MathQuizState;
 import com.gedtutor.model.*;
 import com.gedtutor.service.HomeworkService;
+import com.gedtutor.service.MathQuizService;
 import com.gedtutor.service.QuizService;
 import com.gedtutor.service.UserService;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,11 +26,14 @@ public class QuizController {
     private final QuizService quizService;
     private final HomeworkService homeworkService;
     private final UserService userService;
+    private final MathQuizService mathQuizService;
 
-    public QuizController(QuizService quizService, HomeworkService homeworkService, UserService userService) {
+    public QuizController(QuizService quizService, HomeworkService homeworkService,
+                          UserService userService, MathQuizService mathQuizService) {
         this.quizService = quizService;
         this.homeworkService = homeworkService;
         this.userService = userService;
+        this.mathQuizService = mathQuizService;
     }
 
     @GetMapping("/{homeworkId}")
@@ -35,8 +42,21 @@ public class QuizController {
                            Model model) {
         Homework hw = homeworkService.findById(homeworkId);
         User student = userService.findByUsername(principal.getUsername());
-        List<Question> questions = quizService.getQuestions(hw);
 
+        if (hw.isMathQuiz()) {
+            // Math-quiz landing page — no question pool, just attempt history
+            // and a "Start" button. The actual problems are generated only
+            // when the student starts.
+            model.addAttribute("hw", hw);
+            model.addAttribute("canAttempt", quizService.canAttempt(student, hw));
+            model.addAttribute("attemptCount", quizService.getAttemptCount(student, hw));
+            model.addAttribute("maxAttempts", quizService.getMaxAttempts());
+            model.addAttribute("attempts", quizService.getAttempts(student, hw));
+            model.addAttribute("quizStarted", false);
+            return "homework/math-quiz-start";
+        }
+
+        List<Question> questions = quizService.getQuestions(hw);
         model.addAttribute("hw", hw);
         model.addAttribute("questions", questions);
         model.addAttribute("canAttempt", quizService.canAttempt(student, hw));
@@ -44,18 +64,27 @@ public class QuizController {
         model.addAttribute("maxAttempts", quizService.getMaxAttempts());
         model.addAttribute("attempts", quizService.getAttempts(student, hw));
         model.addAttribute("quizStarted", false);
-
         return "homework/quiz";
     }
 
     @PostMapping("/{homeworkId}/start")
     public String startAttempt(@PathVariable Long homeworkId,
                                @AuthenticationPrincipal UserDetails principal,
+                               HttpSession session,
                                Model model) {
         Homework hw = homeworkService.findById(homeworkId);
         User student = userService.findByUsername(principal.getUsername());
 
-        // startAttempt now selects the subset of questions for this attempt.
+        if (hw.isMathQuiz()) {
+            QuizAttempt attempt = mathQuizService.startAttempt(student, hw, session);
+            MathQuizState state = mathQuizService.load(session, attempt.getId());
+            model.addAttribute("hw", hw);
+            model.addAttribute("attempt", attempt);
+            model.addAttribute("state", state);
+            return "homework/math-quiz-run";
+        }
+
+        // Existing static-question flow.
         QuizAttempt attempt = quizService.startAttempt(student, hw);
         List<Question> questions = quizService.getQuestionsForAttempt(attempt);
 
@@ -67,9 +96,10 @@ public class QuizController {
         model.addAttribute("maxAttempts", quizService.getMaxAttempts());
         model.addAttribute("attempts", quizService.getAttempts(student, hw));
         model.addAttribute("quizStarted", true);
-
         return "homework/quiz";
     }
+
+    // --- Existing static-question grading endpoint (unchanged). ---
 
     @PostMapping("/attempt/{attemptId}/answer")
     @ResponseBody
@@ -81,7 +111,6 @@ public class QuizController {
         boolean correct = quizService.submitAnswer(attemptId, questionId, answer);
         Question q = quizService.findQuestionById(questionId);
 
-        // HashMap tolerates null values; Map.of would NPE if correctAnswer is null.
         Map<String, Object> body = new HashMap<>();
         body.put("correct", correct);
         body.put("correctAnswer", q.getCorrectAnswer() != null ? q.getCorrectAnswer() : "");
@@ -89,10 +118,49 @@ public class QuizController {
         return ResponseEntity.ok(body);
     }
 
+    // --- Math quiz grading endpoint. ---
+
+    @PostMapping("/attempt/{attemptId}/math-answer")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> submitMathAnswer(
+            @PathVariable Long attemptId,
+            @RequestParam int questionIndex,
+            @RequestParam String token,
+            @RequestParam(required = false, defaultValue = "") String answer,
+            HttpSession session) {
+
+        MathAnswerResult result = mathQuizService.gradeQuestion(session, attemptId, questionIndex, token, answer);
+        Map<String, Object> body = new HashMap<>();
+        if (result == null) {
+            body.put("ok", false);
+            body.put("message", "Question expired or unknown — please refresh.");
+            return ResponseEntity.ok(body);
+        }
+        body.put("ok", true);
+        body.put("correct", result.correct());
+        body.put("expected", result.expected() != null ? result.expected() : "");
+        body.put("message", result.message() != null ? result.message() : "");
+
+        MathQuizState state = mathQuizService.load(session, attemptId);
+        if (state != null) {
+            body.put("totalAsked", state.totalAsked());
+            body.put("totalCorrect", state.totalCorrect());
+            body.put("totalQuestions", state.totalQuestions());
+            body.put("isDone", state.isDone());
+        }
+        return ResponseEntity.ok(body);
+    }
+
     @PostMapping("/attempt/{attemptId}/complete")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> completeAttempt(@PathVariable Long attemptId) {
-        QuizAttempt attempt = quizService.completeAttempt(attemptId);
+    public ResponseEntity<Map<String, Object>> completeAttempt(@PathVariable Long attemptId,
+                                                               HttpSession session) {
+        QuizAttempt attempt = quizService.findAttemptById(attemptId);
+        if (attempt.getHomework() != null && attempt.getHomework().isMathQuiz()) {
+            attempt = mathQuizService.completeAttempt(session, attemptId);
+        } else {
+            attempt = quizService.completeAttempt(attemptId);
+        }
         int total = attempt.getTotalQuestions() != null ? attempt.getTotalQuestions() : 0;
         int score = attempt.getScore() != null ? attempt.getScore() : 0;
         int pct = total > 0 ? (score * 100 / total) : 0;

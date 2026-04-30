@@ -2,6 +2,7 @@ package com.gedtutor.config;
 
 import com.gedtutor.model.*;
 import com.gedtutor.repository.HomeworkRepository;
+import com.gedtutor.repository.MathProblemTemplateRepository;
 import com.gedtutor.repository.SubjectRepository;
 import com.gedtutor.repository.UserRepository;
 import com.gedtutor.repository.VideoRepository;
@@ -26,6 +27,7 @@ public class DataSeeder {
                            VideoRepository videos,
                            HomeworkRepository homework,
                            SubjectRepository subjects,
+                           MathProblemTemplateRepository mathTemplates,
                            VideoUrlParser urlParser,
                            PasswordEncoder encoder) {
         return args -> {
@@ -88,6 +90,39 @@ public class DataSeeder {
                         socialStudies, VideoVisibility.PUBLIC);
             }
 
+            // --- Math problem templates (one per kind, idempotent) ---
+            // The admin practice-set form lists everything in this table, so a
+            // fresh DB needs at least one template per kind to fill the dropdown.
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.QUADRATIC,
+                    "Quadratic equation", null, 0.5);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.LINEAR_EQUATION,
+                    "Linear equation", null, 0.5);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.SYSTEM_OF_EQUATIONS,
+                    "System of equations (2x2)", null, 0.5);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.SLOPE,
+                    "Slope between two points", null, 0.5);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.FUNCTION_EVALUATION,
+                    "Function evaluation — linear",  "{\"familyName\":\"LINEAR\"}", 0.5);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.FUNCTION_EVALUATION,
+                    "Function evaluation — quadratic", "{\"familyName\":\"QUADRATIC\"}", 0.5);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.PERCENTAGE,
+                    "Percentage problems", null, 0.5);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.PROPORTION,
+                    "Proportion (a/b = c/x)", null, 0.5);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.MEAN_MEDIAN_MODE,
+                    "Mean / median / mode", null, 0.5);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.PYTHAGOREAN,
+                    "Pythagorean theorem (clean triples)", null, 0.5);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.PYTHAGOREAN,
+                    "Pythagorean theorem (irrational allowed)",
+                    "{\"allowIrrational\":true,\"legMin\":3,\"legMax\":12}", 1.0);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.AREA_PERIMETER,
+                    "Area & perimeter", null, 1.0);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.VOLUME,
+                    "Volume", null, 1.0);
+            ensureMathTemplate(mathTemplates, math, MathProblemKind.SURFACE_AREA,
+                    "Surface area", null, 1.0);
+
             // --- Homework ---
             if (homework.count() == 0) {
                 Homework h1 = new Homework();
@@ -116,6 +151,29 @@ public class DataSeeder {
             s.setActive(true);
             return repo.save(s);
         });
+    }
+
+    /**
+     * Insert a math problem template if no template with the same label
+     * already exists. Idempotent — safe to run on every boot.
+     */
+    private void ensureMathTemplate(MathProblemTemplateRepository repo,
+                                    Subject subject,
+                                    MathProblemKind kind,
+                                    String label,
+                                    String parametersJson,
+                                    double tolerancePercent) {
+        boolean exists = repo.findByActiveTrueOrderByIdAsc().stream()
+                .anyMatch(t -> label.equalsIgnoreCase(t.getLabel()));
+        if (exists) return;
+        MathProblemTemplate t = new MathProblemTemplate();
+        t.setSubject(subject);
+        t.setKind(kind);
+        t.setLabel(label);
+        t.setParametersJson(parametersJson);
+        t.setTolerancePercent(tolerancePercent);
+        t.setActive(true);
+        repo.save(t);
     }
 
     private void saveVideo(VideoRepository repo, VideoUrlParser parser, User admin,

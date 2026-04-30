@@ -5,7 +5,7 @@
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container">
-    <a th:href="@{/homework}" class="back-link">&larr; All homework</a>
+    <a th:href="@{/homework}" class="back-link">&larr; All quizzes</a>
     <h1 th:text="${hw.title}">Homework title</h1>
     <p>
         <span class="badge" th:text="${hw.subject != null ? hw.subject.name : ''}">Math</span>
@@ -29,6 +29,16 @@
         <h3>Graded</h3>
         <p>Grade: <b th:text="${submission.grade}">0</b></p>
         <p th:if="${submission.feedback}"><em>Feedback:</em> <span th:text="${submission.feedback}"></span></p>
+    </section>
+
+    <section class="card" th:if="${!#lists.isEmpty(hw.mathProblemTemplates)}">
+        <h3>Math practice</h3>
+        <p class="muted">Each link generates a fresh random problem so you can drill until you've got it.</p>
+        <ul>
+            <li th:each="tpl : ${hw.mathProblemTemplates}">
+                <a th:href="@{|/practice/math/${tpl.id}|}" th:text="${tpl.label}">Quadratic</a>
+            </li>
+        </ul>
     </section>
 
     <section class="card">

@@ -29,6 +29,17 @@ public class HomeworkForm {
      *  Drives the "Question X of Y" counter on the bulk-add flow. */
     private Integer poolSize;
 
+    /**
+     * When true, this quiz is generated from math problem templates.
+     * The hand-authored Question rows are ignored on attempts; instead
+     * we generate {@link #mathQuestionCount} problems randomly across
+     * every active math template.
+     */
+    private boolean mathQuiz = false;
+
+    /** Total questions to generate when {@link #mathQuiz} is true. */
+    private Integer mathQuestionCount = 40;
+
     public HomeworkForm() {}
 
     public Long getId() { return id; }
@@ -57,4 +68,10 @@ public class HomeworkForm {
 
     public Integer getPoolSize() { return poolSize; }
     public void setPoolSize(Integer poolSize) { this.poolSize = poolSize; }
+
+    public boolean isMathQuiz() { return mathQuiz; }
+    public void setMathQuiz(boolean mathQuiz) { this.mathQuiz = mathQuiz; }
+
+    public Integer getMathQuestionCount() { return mathQuestionCount; }
+    public void setMathQuestionCount(Integer mathQuestionCount) { this.mathQuestionCount = mathQuestionCount; }
 }

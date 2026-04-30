@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Homework form')}"></head>
+<head th:replace="~{fragments/layout :: head('Quiz form')}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
@@ -51,6 +51,23 @@
         <label class="inline">
             <input type="checkbox" th:field="*{published}">
             Published (visible to students)
+        </label>
+
+        <hr style="margin: 1rem 0; border: none; border-top: 1px solid #eee;"/>
+
+        <label class="inline">
+            <input type="checkbox" th:field="*{mathQuiz}" id="mathQuizToggle">
+            <strong>Math quiz</strong> — auto-generate fill-in-the-blank problems
+        </label>
+        <small class="muted">
+            When on, this quiz randomly draws problems from every active math template
+            (linear, quadratic, area, volume, etc.). Hand-authored questions on this quiz are
+            ignored. Students answer in fill-in-the-blank style — no multiple choice or true/false.
+        </small>
+
+        <label>Total math questions per attempt
+            <input type="number" th:field="*{mathQuestionCount}" min="1" max="200" value="40">
+            <small class="muted">Only used when "Math quiz" is checked.</small>
         </label>
 
         <button type="submit" class="btn btn-primary">Save</button>

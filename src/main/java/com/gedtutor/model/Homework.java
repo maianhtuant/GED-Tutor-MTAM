@@ -52,6 +52,18 @@ public class Homework {
     @Column
     private Integer poolSize;
 
+    /**
+     * When true, this quiz auto-generates fill-in-the-blank math problems
+     * from the math problem templates. The hand-authored {@code questions}
+     * list is ignored on attempts.
+     */
+    @Column(nullable = false)
+    private boolean mathQuiz = false;
+
+    /** Total math questions to generate per attempt when {@link #mathQuiz} is true. */
+    @Column
+    private Integer mathQuestionCount = 40;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
 
@@ -67,6 +79,20 @@ public class Homework {
             inverseJoinColumns = @JoinColumn(name = "question_id")
     )
     private List<Question> questions = new ArrayList<>();
+
+    /**
+     * Random-math-problem templates linked to this homework. They are
+     * shown on the homework detail page as practice exercises (each
+     * template generates a fresh problem on every visit) and are graded
+     * separately from the static MCQ/fill-blank questions above.
+     */
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "homework_math_templates",
+            joinColumns = @JoinColumn(name = "homework_id"),
+            inverseJoinColumns = @JoinColumn(name = "template_id")
+    )
+    private List<MathProblemTemplate> mathProblemTemplates = new ArrayList<>();
 
     public Homework() {}
 
@@ -109,4 +135,15 @@ public class Homework {
 
     public List<Question> getQuestions() { return questions; }
     public void setQuestions(List<Question> questions) { this.questions = questions; }
+
+    public List<MathProblemTemplate> getMathProblemTemplates() { return mathProblemTemplates; }
+    public void setMathProblemTemplates(List<MathProblemTemplate> mathProblemTemplates) {
+        this.mathProblemTemplates = mathProblemTemplates;
+    }
+
+    public boolean isMathQuiz() { return mathQuiz; }
+    public void setMathQuiz(boolean mathQuiz) { this.mathQuiz = mathQuiz; }
+
+    public Integer getMathQuestionCount() { return mathQuestionCount; }
+    public void setMathQuestionCount(Integer mathQuestionCount) { this.mathQuestionCount = mathQuestionCount; }
 }

@@ -18,7 +18,8 @@
     <a th:href="@{/}" class="brand">GED Tutor</a>
     <div class="nav-links">
         <a th:href="@{/videos}">Videos</a>
-        <a th:href="@{/homework}" sec:authorize="isAuthenticated()">Homework</a>
+        <a th:href="@{/homework}" sec:authorize="isAuthenticated()">Quiz</a>
+        <a th:href="@{/practice}" sec:authorize="isAuthenticated()">Practice</a>
         <a th:href="@{/admin}" sec:authorize="hasRole('ADMIN')">Admin</a>
     </div>
     <div class="nav-auth">

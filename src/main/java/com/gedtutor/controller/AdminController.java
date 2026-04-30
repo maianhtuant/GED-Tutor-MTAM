@@ -331,6 +331,8 @@ public class AdminController {
         form.setPublished(hw.isPublished());
         form.setQuestionsPerAttempt(hw.getQuestionsPerAttempt());
         form.setPoolSize(hw.getPoolSize());
+        form.setMathQuiz(hw.isMathQuiz());
+        form.setMathQuestionCount(hw.getMathQuestionCount() != null ? hw.getMathQuestionCount() : 40);
         form.setVideoId(hw.getVideo() != null ? hw.getVideo().getId() : null);
         model.addAttribute("form", form);
         model.addAttribute("subjects", subjectService.listActive());

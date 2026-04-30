@@ -76,6 +76,12 @@ public class HomeworkService {
         Integer pool = form.getPoolSize();
         hw.setPoolSize(pool != null && pool > 0 ? pool : null);
 
+        // Math-quiz mode: when on, attempts auto-generate problems from
+        // every active math template and ignore hand-authored questions.
+        hw.setMathQuiz(form.isMathQuiz());
+        Integer mqc = form.getMathQuestionCount();
+        hw.setMathQuestionCount(mqc != null && mqc > 0 ? mqc : 40);
+
         if (form.getVideoId() != null) {
             Video v = videoRepository.findById(form.getVideoId()).orElse(null);
             hw.setVideo(v);
@@ -89,7 +95,9 @@ public class HomeworkService {
         // questions from the subject's question bank and link them via
         // homework_questions. If the bank doesn't have enough, we link
         // whatever's available and let the admin see the count to adjust.
-        if (isNew && saved.getPoolSize() != null && saved.getPoolSize() > 0) {
+        // Math quizzes auto-generate, so skip the bank step for those.
+        if (isNew && !hw.isMathQuiz()
+                && saved.getPoolSize() != null && saved.getPoolSize() > 0) {
             linkRandomQuestionsFromBank(saved, saved.getPoolSize());
             saved = homeworkRepository.save(saved);
         }
