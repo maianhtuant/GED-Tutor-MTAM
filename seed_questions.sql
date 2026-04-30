@@ -306,3 +306,8 @@ SELECT s.name AS subject, COUNT(q.id) AS total_questions
 FROM subjects s
 LEFT JOIN questions q ON q.subject_id = s.id
 GROUP BY s.name ORDER BY s.name;
+
+
+
+ALTER TABLE homework ADD COLUMN IF NOT EXISTS math_quiz BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE homework ADD COLUMN IF NOT EXISTS math_question_count INTEGER DEFAULT 40;

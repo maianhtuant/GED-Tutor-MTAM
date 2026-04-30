@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head(${set.title})}"></head>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <style>
   .practice-card {
     background: #fff; border: 1px solid #ddd; border-radius: 8px;
@@ -9,10 +10,16 @@
   .practice-card.correct   { border-left: 4px solid #28a745; background: #f0fff4; }
   .practice-card.incorrect { border-left: 4px solid #dc3545; background: #fff5f5; }
   .question-text {
-    font-size: 1.2rem; font-weight: 600;
-    margin: 0 0 0.75rem 0; white-space: pre-wrap;
+    font-size: 1.1rem; font-weight: 600;
+    margin: 0 0 0.75rem 0;
     font-family: "Cambria", "Times New Roman", serif;
   }
+  .math-expr {
+    margin: 0.6rem 0 0.25rem;
+    text-align: center;
+  }
+  .math-expr .katex-display { margin: 0; }
+  .math-inline .katex { font-size: 1.1em; }
   .qmeta { color:#888; font-size:0.9rem; margin-bottom: 0.5rem; }
   .badge-type {
     background:#6c757d; color:#fff; padding:0.2rem 0.5rem;
@@ -77,7 +84,7 @@
       <span class="badge-type" th:text="${problem.shape.name()}">SCALAR</span>
     </div>
 
-    <p class="question-text" th:text="${problem.questionText}">Solve for x: 2x + 3 = 7</p>
+    <p class="question-text" th:attr="data-raw=${problem.questionText}"></p>
 
     <p class="hint" th:if="${problem.shape.name() == 'SCALAR' and !problem.hasSpecialAnswer()}">
       One answer. Decimals or fractions are fine: <code>2.5</code> or <code>5/2</code>.
@@ -206,6 +213,92 @@
   });
 
   setProgress();
+
+  /* ── KaTeX math rendering ── */
+
+  function escHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Convert plain math notation → LaTeX understood by KaTeX
+  function toLatex(s) {
+    return s
+      .replace(/(-?\d+)\/(-?\d+|x)/g, '\\frac{$1}{$2}')  // 3/4 → \frac{3}{4}
+      .replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}')           // sqrt(x) → \sqrt{x}
+      .replace(/\*/g, ' \\cdot ');                          // * → ·
+  }
+
+  // True when a string is a pure math expression (no prose, no comma, no ?)
+  // Catches: "3x + 5 = 8", "2x^2 - 3x + 4 = 0", "5x = -8", "3/4 = 5/x", "x + y = 5"
+  function isPureMathExpr(s) {
+    if (/[,?]/.test(s)) return false;
+    return /\^/.test(s) || (/=/.test(s) && /[xy]/.test(s));
+  }
+
+  function renderMathQuestions() {
+    document.querySelectorAll('.question-text[data-raw]').forEach(el => {
+      const raw = el.getAttribute('data-raw') || '';
+      const newlineIdx = raw.indexOf('\n');
+
+      // ── 1. Multi-line → system of equations ──────────────────────────────
+      // Format: "Solve the system:\n  5x = -8\n  7x + y = 8"
+      if (newlineIdx !== -1) {
+        const label = raw.substring(0, newlineIdx).trim();
+        const lines = raw.substring(newlineIdx + 1)
+          .split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        const mathStr = lines.length === 1
+          ? toLatex(lines[0])
+          : '\\begin{cases} ' + lines.map(toLatex).join(' \\\\ ') + ' \\end{cases}';
+        el.innerHTML =
+          '<span>' + escHtml(label) + '</span>' +
+          '<div class="math-expr">' +
+            katex.renderToString(mathStr, { displayMode: true, throwOnError: false }) +
+          '</div>';
+        return;
+      }
+
+      // ── 2. Function evaluation ─────────────────────────────────────────────
+      // Format: "Given f(x) = 3x + 5, what is f(2)?"  (or quadratic variant)
+      const funcMatch = raw.match(/^(Given f\(x\) = )([^,]+)(, what is .+)$/);
+      if (funcMatch) {
+        el.innerHTML =
+          escHtml(funcMatch[1]) +
+          '<span class="math-inline">' +
+            katex.renderToString(toLatex(funcMatch[2]), { displayMode: false, throwOnError: false }) +
+          '</span>' +
+          escHtml(funcMatch[3]);
+        return;
+      }
+
+      // ── 3. Single-line "Label: PURE_MATH_EXPR" ───────────────────────────
+      // Covers: quadratic, linear, proportion
+      // e.g. "Solve for x: 2x^2 - 3x + 4 = 0"
+      //      "Solve for x: 3x + 5 = 8"
+      //      "Solve the proportion: 3/4 = 5/x"
+      const colonIdx = raw.indexOf(': ');
+      if (colonIdx !== -1) {
+        const label = raw.substring(0, colonIdx);
+        const expr  = raw.substring(colonIdx + 2).trim();
+        if (isPureMathExpr(expr)) {
+          el.innerHTML =
+            '<span>' + escHtml(label) + ':</span>' +
+            '<div class="math-expr">' +
+              katex.renderToString(toLatex(expr), { displayMode: true, throwOnError: false }) +
+            '</div>';
+          return;
+        }
+      }
+
+      // ── 4. Fallback: plain word problem ──────────────────────────────────
+      // Slope, area/perimeter, percentage, stats, Pythagorean, volume, surface area
+      el.textContent = raw;
+    });
+  }
+
+  const katexScript = document.createElement('script');
+  katexScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js';
+  katexScript.onload = renderMathQuestions;
+  document.head.appendChild(katexScript);
 </script>
 </body>
 </html>
