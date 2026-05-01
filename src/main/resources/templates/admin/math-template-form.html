@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${pageTitle})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <div class="page-header">
+        <h1 th:text="${pageTitle}">Math Template</h1>
+        <a th:href="@{/admin/math-templates}" class="btn">← Back to list</a>
+    </div>
+
+    <!-- Single form — action switches between create and edit -->
+    <form th:action="${form.id == null} ? @{/admin/math-templates/new} : @{/admin/math-templates/{id}/edit(id=${form.id})}"
+          th:object="${form}"
+          method="post"
+          novalidate>
+
+        <div class="form-group">
+            <label for="label">Label *</label>
+            <input id="label" type="text" th:field="*{label}"
+                   placeholder="e.g. Quadratic – Easy"/>
+            <span class="field-error" th:if="${#fields.hasErrors('label')}"
+                  th:errors="*{label}"></span>
+        </div>
+
+        <div class="form-group">
+            <label for="template">Template * <small class="text-muted">(use {placeholder} for random numbers)</small></label>
+            <input id="template" type="text" th:field="*{template}"
+                   placeholder="e.g.  {a}x^2 + {b}x + {c} = 0"
+                   style="font-family: 'Courier New', monospace; font-size: 1rem;"/>
+            <small class="text-muted">
+                LaTeX syntax is supported — e.g. <code>\frac{{a}}{{b}}</code> renders as a fraction.
+                Use double braces <code>{{</code> <code>}}</code> around LaTeX arguments to avoid
+                conflict with the {placeholder} syntax.
+            </small>
+            <span class="field-error" th:if="${#fields.hasErrors('template')}"
+                  th:errors="*{template}"></span>
+        </div>
+
+        <div class="form-group">
+            <label for="answerFormula">Answer formula <small class="text-muted">(optional — leave blank for display-only)</small></label>
+            <input id="answerFormula" type="text" th:field="*{answerFormula}"
+                   placeholder="e.g.  a/b + c/d"
+                   style="font-family: 'Courier New', monospace; font-size: 1rem;"/>
+            <small class="text-muted">
+                Arithmetic expression using the same placeholder names as the template.
+                Supports <code>+</code> <code>-</code> <code>*</code> <code>/</code> and parentheses.
+                Example: template <code>\frac{{a}}{{b}} + \frac{{c}}{{d}}</code> → formula <code>a/b + c/d</code>.
+            </small>
+        </div>
+
+        <div style="display:flex; gap:1rem;">
+            <div class="form-group" style="flex:1">
+                <label for="minValue">Min value *</label>
+                <input id="minValue" type="number" th:field="*{minValue}" min="1" max="9998"/>
+                <span class="field-error" th:if="${#fields.hasErrors('minValue')}"
+                      th:errors="*{minValue}"></span>
+            </div>
+            <div class="form-group" style="flex:1">
+                <label for="maxValue">Max value *</label>
+                <input id="maxValue" type="number" th:field="*{maxValue}" min="2" max="9999"/>
+                <span class="field-error" th:if="${#fields.hasErrors('maxValue')}"
+                      th:errors="*{maxValue}"></span>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="subjectId">Subject (optional)</label>
+            <select id="subjectId" th:field="*{subjectId}">
+                <option value="">— None —</option>
+                <option th:each="s : ${subjects}"
+                        th:value="${s.id}"
+                        th:text="${s.name}">Subject</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="videoUrl">Video URL (optional)</label>
+            <input id="videoUrl" type="text" th:field="*{videoUrl}"
+                   placeholder="https://youtube.com/..."/>
+        </div>
+
+        <div class="form-group" style="display:flex; align-items:center; gap:.5rem;">
+            <input id="active" type="checkbox" th:field="*{active}" style="width:auto;"/>
+            <label for="active" style="margin:0;">Active</label>
+        </div>
+
+        <div style="display:flex; gap:.75rem; margin-top:1.25rem;">
+            <button type="submit" class="btn btn-primary">💾 Save</button>
+            <a th:href="@{/admin/math-templates}" class="btn">Cancel</a>
+        </div>
+    </form>
+
+    <!-- ── Syntax guide ──────────────────────────────────────────────── -->
+    <div class="card" style="margin-top:2rem; padding:1.25rem; background:#f8f9ff; border-radius:8px; border:1px solid #dde3f0;">
+        <h3 style="font-size:1rem; margin-bottom:.75rem;">💡 Template syntax</h3>
+        <p class="text-muted" style="font-size:.9rem;">
+            Each unique <code>{placeholder}</code> gets one random integer in your range.
+            The same placeholder reused multiple times always gets the same value.
+        </p>
+        <p class="text-muted" style="font-size:.9rem; margin-top:.5rem;">
+            <strong><code>{+-}</code></strong> is a special token that randomly shows
+            <code>+</code> or <code>−</code> each time a problem is generated. It adds a
+            sign variable <code>s</code> to the formula context: <code>s = 1</code> for
+            <code>+</code> and <code>s = -1</code> for <code>−</code>. Use
+            <code>(c - s * b) / a</code> so one formula covers both cases.
+        </p>
+        <table style="margin-top:.75rem; font-size:.88rem; border-collapse:collapse; width:100%;">
+            <thead>
+                <tr style="background:#eef0fb;">
+                    <th style="padding:.4rem .7rem; text-align:left;">Template</th>
+                    <th style="padding:.4rem .7rem; text-align:left;">Answer formula</th>
+                    <th style="padding:.4rem .7rem; text-align:left;">What it generates</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td style="padding:.35rem .7rem;"><code>{a}x {+-} {b} = {c}</code></td>
+                    <td style="padding:.35rem .7rem;"><code>(c - s * b) / a</code></td>
+                    <td style="padding:.35rem .7rem;">Randomly: <em>3x + 5 = 11</em> or <em>3x − 5 = 1</em> (same answer formula works for both)</td>
+                </tr>
+                <tr style="background:#f4f6fb;">
+                    <td style="padding:.35rem .7rem;"><code>\frac{{a}}{{b}} {+-} \frac{{c}}{{d}}</code></td>
+                    <td style="padding:.35rem .7rem;"><code>a/b + s * (c/d)</code></td>
+                    <td style="padding:.35rem .7rem;">Randomly: add or subtract two fractions</td>
+                </tr>
+                <tr>
+                    <td style="padding:.35rem .7rem;"><code>{a}x + {b} = {c}</code></td>
+                    <td style="padding:.35rem .7rem;"><code>(c - b) / a</code></td>
+                    <td style="padding:.35rem .7rem;">Always addition: 3x + 7 = 12 → answer 5/3</td>
+                </tr>
+                <tr style="background:#f4f6fb;">
+                    <td style="padding:.35rem .7rem;"><code>{a}x - {b} = {c}</code></td>
+                    <td style="padding:.35rem .7rem;"><code>(c + b) / a</code></td>
+                    <td style="padding:.35rem .7rem;">Always subtraction: 3x − 7 = 2 → answer 3</td>
+                </tr>
+                <tr>
+                    <td style="padding:.35rem .7rem;"><code>\frac{{a}}{{b}} + \frac{{c}}{{d}}</code></td>
+                    <td style="padding:.35rem .7rem;"><code>a/b + c/d</code></td>
+                    <td style="padding:.35rem .7rem;">³⁄₇ + ²⁄₅ → answer 31/35</td>
+                </tr>
+                <tr style="background:#f4f6fb;">
+                    <td style="padding:.35rem .7rem;"><code>{a}x^2 + {b}x + {c} = 0</code></td>
+                    <td style="padding:.35rem .7rem;"><em>(leave blank — use QUADRATIC generator instead)</em></td>
+                    <td style="padding:.35rem .7rem;">Display only</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

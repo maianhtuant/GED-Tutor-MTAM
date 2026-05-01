@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Preview – ' + ${template.label})}">
+    <!-- KaTeX is added inside the layout head fragment replacement -->
+</head>
+<!-- KaTeX loaded here because layout head fragment doesn't include it -->
+<head>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.css"/>
+    <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.10/dist/katex.min.js"></script>
+    <style>
+        .preview-box {
+            background: linear-gradient(135deg, #667eea18 0%, #764ba218 100%);
+            border: 2px solid #4361ee;
+            border-radius: 12px;
+            padding: 2.5rem;
+            text-align: center;
+            margin: 1.5rem 0;
+        }
+        .math-display { min-height: 3rem; display: flex; align-items: center; justify-content: center; }
+        .math-display .katex { font-size: 2.4rem; color: #4361ee; }
+        .template-badge {
+            display: inline-block;
+            font-family: 'Courier New', monospace;
+            font-size: .9rem;
+            background: #f4f6fb;
+            border: 1px solid #dde3f0;
+            border-radius: 6px;
+            padding: .3rem .8rem;
+            color: #6b7280;
+        }
+        .preview-actions { display: flex; gap: .75rem; justify-content: center; margin-top:1.5rem; flex-wrap: wrap; }
+    </style>
+</head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <div class="page-header">
+        <h1 th:text="${template.label}">Template</h1>
+        <a th:href="@{/admin/math-templates}" class="btn">← Back to list</a>
+    </div>
+
+    <!-- Template string -->
+    <p>
+        <span class="text-muted" style="font-size:.9rem;">Template:&nbsp;</span>
+        <span class="template-badge" th:text="${config.template}"></span>
+        &nbsp;
+        <span class="text-muted" style="font-size:.85rem;"
+              th:text="'(range: ' + ${config.minValue} + ' – ' + ${config.maxValue} + ')'"></span>
+    </p>
+
+    <!-- ── Rendered math expression ───────────────────────────────── -->
+    <div class="preview-box">
+        <div id="math-display" class="math-display"></div>
+        <span id="math-raw" th:text="${generated.questionText}" style="display:none"></span>
+    </div>
+
+    <!-- ── Actions ────────────────────────────────────────────────── -->
+    <div class="preview-actions">
+        <!-- POST to regenerate with fresh random values -->
+        <form th:action="@{/admin/math-templates/{id}/preview(id=${template.id})}" method="post">
+            <button type="submit" class="btn btn-primary">🔀 Regenerate</button>
+        </form>
+        <a th:href="@{/admin/math-templates/{id}/edit(id=${template.id})}"
+           class="btn">✏ Edit template</a>
+        <a th:href="@{/admin/math-templates}" class="btn">← All templates</a>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const raw     = document.getElementById("math-raw").textContent.trim();
+        const display = document.getElementById("math-display");
+        try {
+            katex.render(raw, display, { displayMode: true, throwOnError: false });
+        } catch (e) {
+            display.textContent = raw;
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Math Templates')}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <div class="page-header">
+        <h1>Math Templates</h1>
+        <div style="display:flex; gap:.5rem;">
+            <a th:href="@{/admin/math-templates/new-quadratic}" class="btn btn-primary">+ Quadratic</a>
+            <a th:href="@{/admin/math-templates/new}" class="btn">+ Free-Form</a>
+        </div>
+    </div>
+
+    <div th:if="${message}" class="alert alert-success" th:text="${message}"></div>
+
+    <!-- Empty state -->
+    <div th:if="${#lists.isEmpty(rows)}" class="empty-state">
+        <p>No templates yet.</p>
+        <a th:href="@{/admin/math-templates/new-quadratic}" class="btn btn-primary">Add Quadratic Template</a>
+    </div>
+
+    <!-- Template list -->
+    <table th:unless="${#lists.isEmpty(rows)}" class="table">
+        <thead>
+            <tr>
+                <th>Kind</th>
+                <th>Label</th>
+                <th>Summary</th>
+                <th>Subject</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="row : ${rows}">
+                <td>
+                    <span th:if="${row.kind() == 'QUADRATIC'}"
+                          style="background:#0d6efd; color:#fff; padding:.15rem .45rem; border-radius:4px; font-size:.75rem;">QUADRATIC</span>
+                    <span th:if="${row.kind() == 'FREE_FORM'}"
+                          style="background:#6c757d; color:#fff; padding:.15rem .45rem; border-radius:4px; font-size:.75rem;">FREE_FORM</span>
+                </td>
+                <td th:text="${row.label()}">Label</td>
+                <td><code th:text="${row.summary()}">—</code></td>
+                <td th:text="${row.subjectName()}">—</td>
+                <td>
+                    <!-- Preview only available for FREE_FORM -->
+                    <a th:if="${row.kind() == 'FREE_FORM'}"
+                       th:href="@{/admin/math-templates/{id}/preview(id=${row.id()})}"
+                       class="btn btn-sm btn-success">▶ Preview</a>
+                    <!-- Edit routes differ by kind -->
+                    <a th:if="${row.kind() == 'QUADRATIC'}"
+                       th:href="@{/admin/math-templates/{id}/edit-quadratic(id=${row.id()})}"
+                       class="btn btn-sm">✏ Edit</a>
+                    <a th:if="${row.kind() == 'FREE_FORM'}"
+                       th:href="@{/admin/math-templates/{id}/edit(id=${row.id()})}"
+                       class="btn btn-sm">✏ Edit</a>
+                    <form th:action="@{/admin/math-templates/{id}/delete(id=${row.id()})}"
+                          method="post" style="display:inline"
+                          onsubmit="return confirm('Delete this template?')">
+                        <button type="submit" class="btn btn-sm btn-danger">🗑 Delete</button>
+                    </form>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div style="margin-top:1.5rem;">
+        <a th:href="@{/admin}" class="btn">← Back to Dashboard</a>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

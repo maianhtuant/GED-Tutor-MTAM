@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head(${pageTitle})}"></head>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+    <div class="page-header">
+        <h1 th:text="${pageTitle}">Quadratic Template</h1>
+        <a th:href="@{/admin/math-templates}" class="btn">← Back to list</a>
+    </div>
+
+    <form th:action="${form.id == null} ? @{/admin/math-templates/new-quadratic} : @{/admin/math-templates/{id}/edit-quadratic(id=${form.id})}"
+          th:object="${form}"
+          method="post"
+          novalidate>
+
+        <div class="form-group">
+            <label for="label">Label *</label>
+            <input id="label" type="text" th:field="*{label}"
+                   placeholder="e.g. Quadratic – Mixed"/>
+            <span class="field-error" th:if="${#fields.hasErrors('label')}"
+                  th:errors="*{label}"></span>
+        </div>
+
+        <p class="text-muted" style="font-size:.9rem; margin-bottom:1rem;">
+            Generates <code>ax² + bx + c = 0</code> where <em>a</em>, <em>b</em>, <em>c</em>
+            are picked randomly from the ranges you set below. The solver automatically
+            determines whether the equation has two roots, one repeated root, or no real solution.
+        </p>
+
+        <!-- Coefficient a -->
+        <fieldset style="border:1px solid #dde; border-radius:6px; padding:.75rem 1rem; margin-bottom:1rem;">
+            <legend style="font-weight:600; padding:0 .5rem;">Coefficient <em>a</em> (leading term — never 0)</legend>
+            <div style="display:flex; gap:1rem;">
+                <div class="form-group" style="flex:1">
+                    <label for="aMin">Min</label>
+                    <input id="aMin" type="number" th:field="*{aMin}" min="1" max="20"/>
+                    <span class="field-error" th:if="${#fields.hasErrors('aMin')}" th:errors="*{aMin}"></span>
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label for="aMax">Max</label>
+                    <input id="aMax" type="number" th:field="*{aMax}" min="1" max="20"/>
+                    <span class="field-error" th:if="${#fields.hasErrors('aMax')}" th:errors="*{aMax}"></span>
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Coefficient b -->
+        <fieldset style="border:1px solid #dde; border-radius:6px; padding:.75rem 1rem; margin-bottom:1rem;">
+            <legend style="font-weight:600; padding:0 .5rem;">Coefficient <em>b</em> (x term)</legend>
+            <div style="display:flex; gap:1rem;">
+                <div class="form-group" style="flex:1">
+                    <label for="bMin">Min (can be negative)</label>
+                    <input id="bMin" type="number" th:field="*{bMin}" min="-20" max="0"/>
+                    <span class="field-error" th:if="${#fields.hasErrors('bMin')}" th:errors="*{bMin}"></span>
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label for="bMax">Max</label>
+                    <input id="bMax" type="number" th:field="*{bMax}" min="0" max="20"/>
+                    <span class="field-error" th:if="${#fields.hasErrors('bMax')}" th:errors="*{bMax}"></span>
+                </div>
+            </div>
+        </fieldset>
+
+        <!-- Coefficient c -->
+        <fieldset style="border:1px solid #dde; border-radius:6px; padding:.75rem 1rem; margin-bottom:1rem;">
+            <legend style="font-weight:600; padding:0 .5rem;">Coefficient <em>c</em> (constant term)</legend>
+            <div style="display:flex; gap:1rem;">
+                <div class="form-group" style="flex:1">
+                    <label for="cMin">Min (can be negative)</label>
+                    <input id="cMin" type="number" th:field="*{cMin}" min="-20" max="0"/>
+                    <span class="field-error" th:if="${#fields.hasErrors('cMin')}" th:errors="*{cMin}"></span>
+                </div>
+                <div class="form-group" style="flex:1">
+                    <label for="cMax">Max</label>
+                    <input id="cMax" type="number" th:field="*{cMax}" min="0" max="20"/>
+                    <span class="field-error" th:if="${#fields.hasErrors('cMax')}" th:errors="*{cMax}"></span>
+                </div>
+            </div>
+        </fieldset>
+
+        <div class="form-group">
+            <label for="subjectId">Subject (optional)</label>
+            <select id="subjectId" th:field="*{subjectId}">
+                <option value="">— None —</option>
+                <option th:each="s : ${subjects}"
+                        th:value="${s.id}"
+                        th:text="${s.name}">Subject</option>
+            </select>
+        </div>
+
+        <div class="form-group">
+            <label for="videoUrl">Video URL (optional)</label>
+            <input id="videoUrl" type="text" th:field="*{videoUrl}"
+                   placeholder="https://youtube.com/..."/>
+        </div>
+
+        <div class="form-group" style="display:flex; align-items:center; gap:.5rem;">
+            <input id="active" type="checkbox" th:field="*{active}" style="width:auto;"/>
+            <label for="active" style="margin:0;">Active</label>
+        </div>
+
+        <div style="display:flex; gap:.75rem; margin-top:1.25rem;">
+            <button type="submit" class="btn btn-primary">💾 Save</button>
+            <a th:href="@{/admin/math-templates}" class="btn">Cancel</a>
+        </div>
+    </form>
+
+    <!-- Info box -->
+    <div class="card" style="margin-top:2rem; padding:1.25rem; background:#f8f9ff; border-radius:8px; border:1px solid #dde3f0;">
+        <h3 style="font-size:1rem; margin-bottom:.75rem;">💡 How the QUADRATIC generator works</h3>
+        <p class="text-muted" style="font-size:.9rem;">
+            For each question the generator picks random integers <em>a</em>, <em>b</em>, <em>c</em>
+            in your ranges and computes the discriminant <code>b² − 4ac</code>.
+        </p>
+        <ul style="font-size:.88rem; margin-top:.5rem; padding-left:1.2rem;">
+            <li>Discriminant &lt; 0 → <strong>No real solution</strong> (student types <code>no real solution</code>)</li>
+            <li>Discriminant = 0 → <strong>One repeated root</strong> (exact rational)</li>
+            <li>Discriminant &gt; 0, perfect square → <strong>Two rational roots</strong></li>
+            <li>Discriminant &gt; 0, not perfect square → <strong>Two irrational roots</strong> (accepted within 0.5%)</li>
+        </ul>
+    </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
