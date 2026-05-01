@@ -57,6 +57,14 @@ public record Rational(long numerator, long denominator) implements Serializable
     @Override
     public String toString() {
         if (isInteger()) return Long.toString(numerator);
+        // Large denominators come from ofDouble() — irrational approximations.
+        // Display as a rounded decimal (2 d.p.) instead of an unwieldy fraction.
+        if (denominator > 1000) {
+            double val = toDouble();
+            // Format to 2 decimal places, then strip trailing zeros after the dot.
+            String s = String.format("%.2f", val);
+            return s;
+        }
         return numerator + "/" + denominator;
     }
 

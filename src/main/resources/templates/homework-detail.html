@@ -23,6 +23,10 @@
             Related lesson:
             <a th:href="@{|/videos/${hw.video.id}|}" th:text="${hw.video.title}">Watch</a>
         </p>
+
+        <a th:href="@{|/quiz/${hw.id}|}" class="btn btn-primary" style="margin-top:0.5rem;">
+            Take Quiz
+        </a>
     </section>
 
     <section class="card" th:if="${submission != null and submission.grade != null}">

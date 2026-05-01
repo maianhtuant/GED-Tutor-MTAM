@@ -1,165 +1,119 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Video Lessons')}"></head>
-<style>
-  /* ── Tab bar ──────────────────────────────────────────────── */
-  .tab-bar {
-    display: flex;
-    gap: 0;
-    border-bottom: 2px solid #e5e7eb;
-    margin-bottom: 1.75rem;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .tab-bar::-webkit-scrollbar { display: none; }
-  .tab-btn {
-    padding: 0.65rem 1.3rem;
-    font-size: 0.92rem;
-    font-weight: 500;
-    color: #6b7280;
-    background: none;
-    border: none;
-    border-bottom: 3px solid transparent;
-    margin-bottom: -2px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: color .15s, border-color .15s;
-  }
-  .tab-btn:hover { color: #111; }
-  .tab-btn.active { color: #2563eb; border-bottom-color: #2563eb; font-weight: 600; }
-
-  /* ── Panels ───────────────────────────────────────────────── */
-  .tab-panel { display: none; }
-  .tab-panel.active { display: block; }
-
-  /* ── Search ───────────────────────────────────────────────── */
-  .search-bar {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin-bottom: 1.5rem;
-  }
-  .search-bar input {
-    flex: 1;
-    padding: 0.55rem 0.9rem;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    font-size: 0.95rem;
-  }
-  .search-bar input:focus { outline: 2px solid #2563eb; border-color: #2563eb; }
-  .search-count { font-size: 0.85rem; color: #888; white-space: nowrap; }
-
-  /* ── Sub-subject sections ─────────────────────────────────── */
-  .category-section { margin-bottom: 2.5rem; }
-  .category-title {
-    font-size: 1rem;
-    font-weight: 700;
-    color: #374151;
-    margin: 0 0 0.9rem;
-    padding-bottom: 0.4rem;
-    border-bottom: 2px solid #e5e7eb;
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-  .category-title .cat-count {
-    font-size: 0.78rem;
-    font-weight: 500;
-    background: #e5e7eb;
-    color: #6b7280;
-    padding: 0.15rem 0.5rem;
-    border-radius: 999px;
-  }
-
-  /* ── Video cards ──────────────────────────────────────────── */
-  .video-card { text-decoration: none; color: inherit; }
-  .video-card[hidden] { display: none !important; }
-  .no-results { color: #888; font-style: italic; padding: 1rem 0; }
-</style>
+<head th:replace="~{fragments/layout :: head('Lessons')}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
-<main class="container">
-  <h1>Video Lessons</h1>
+<div class="page">
+
+  <!-- ── Page header ──────────────────────────────────────────── -->
+  <div class="lesson-crumbs" style="margin-bottom:0.5rem;">
+    <span>lessons</span>
+  </div>
+  <div style="max-width:780px;margin-bottom:2rem;">
+    <h1 style="font-family:'Newsreader',serif;font-size:clamp(1.9rem,4vw,2.8rem);font-weight:400;letter-spacing:-.02em;margin:0 0 .5rem;line-height:1.15;">
+      Lessons
+    </h1>
+    <p class="muted" style="font-size:1rem;margin:0;">
+      Watch, learn, and practice — all in one place.
+    </p>
+  </div>
+
   <div class="alert alert-error" th:if="${error}" th:text="${error}"></div>
 
-  <!-- ── Tab bar ── -->
-  <div class="tab-bar" id="tabBar">
-    <button class="tab-btn" data-tab="all">All
-      <span style="font-size:0.75rem;color:#aaa;margin-left:0.3rem;"
-            th:text="'(' + ${#lists.size(allVideos)} + ')'"></span>
+  <!-- ── Subject tab bar ──────────────────────────────────────── -->
+  <div class="pill-tab-bar" id="tabBar">
+    <button class="pill-tab" data-tab="all">
+      All
+      <span class="count" th:text="${#lists.size(allVideos)}">0</span>
     </button>
     <button th:each="s : ${subjects}"
-            class="tab-btn"
+            class="pill-tab"
             th:data-tab="${'tab-' + s.id}"
             th:data-subject-id="${s.id}">
       <span th:text="${s.name}">Math</span>
-      <span style="font-size:0.75rem;color:#aaa;margin-left:0.3rem;"
-            th:text="'(' + ${videoCountBySubject[s.id] ?: 0} + ')'"></span>
+      <span class="count" th:text="${videoCountBySubject[s.id] ?: 0}">0</span>
     </button>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
+  <!-- ════════════════════════════════════════════════════════════
        "All" panel — flat search across everything
-       ══════════════════════════════════════════════════════════ -->
+       ════════════════════════════════════════════════════════════ -->
   <div class="tab-panel" id="all">
-    <div class="search-bar">
-      <input type="text" placeholder="Search all videos…" id="searchAll" autocomplete="off">
-      <span class="search-count" id="countAll"></span>
+    <div class="vid-search-bar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="flex-shrink:0;opacity:.45">
+        <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
+      <input type="text" placeholder="Search all lessons…" id="searchAll" autocomplete="off">
+      <span class="vid-search-count" id="countAll"></span>
     </div>
-    <div th:if="${#lists.isEmpty(allVideos)}" class="empty">No videos yet. Check back soon!</div>
+    <div th:if="${#lists.isEmpty(allVideos)}" class="muted" style="padding:2rem 0;font-style:italic;">
+      No lessons yet. Check back soon!
+    </div>
     <div class="grid" id="gridAll">
       <a th:each="v : ${allVideos}"
          th:href="@{|/videos/${v.id}|}"
-         class="video-card"
+         class="video-card card"
          th:data-title="${v.title?.toLowerCase()}"
          th:data-subject="${v.subject != null ? v.subject.name?.toLowerCase() : ''}"
          th:data-category="${v.category != null ? v.category?.toLowerCase() : ''}">
         <div class="thumb"
              th:if="${v.provider == 'youtube' and v.embedId != null}"
              th:style="|background-image:url('https://img.youtube.com/vi/${v.embedId}/hqdefault.jpg')|"></div>
-        <div class="thumb" th:unless="${v.provider == 'youtube' and v.embedId != null}"><span>Watch</span></div>
+        <div class="thumb thumb-blank" th:unless="${v.provider == 'youtube' and v.embedId != null}">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".4"><path d="M7 5l12 7-12 7V5z" fill="currentColor" stroke="none"/></svg>
+        </div>
         <div class="card-body">
-          <span class="badge" th:text="${v.subject != null ? v.subject.name : ''}"></span>
-          <span th:if="${v.category != null and !v.category.isEmpty()}"
-                style="font-size:0.75rem;color:#888;margin-left:0.3rem;"
-                th:text="${v.category}"></span>
-          <h3 th:text="${v.title}">Title</h3>
-          <p class="muted" th:text="${#temporals.format(v.createdAt,'MMM d, yyyy')}">Date</p>
+          <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem;">
+            <span class="badge" th:text="${v.subject != null ? v.subject.name : ''}"></span>
+            <span th:if="${v.category != null and !v.category.isEmpty()}"
+                  class="mono" style="font-size:.72rem;color:var(--ink-4);"
+                  th:text="${v.category}"></span>
+          </div>
+          <h3 style="margin:0 0 .35rem;font-size:.95rem;font-weight:500;line-height:1.35;"
+              th:text="${v.title}">Title</h3>
+          <p class="muted" style="font-size:.8rem;margin:0;"
+             th:text="${#temporals.format(v.createdAt,'MMM d, yyyy')}">Date</p>
         </div>
       </a>
     </div>
-    <p class="no-results" id="noResultsAll" style="display:none;">No videos match your search.</p>
+    <p class="no-results" id="noResultsAll" style="display:none;color:var(--ink-4);font-style:italic;padding:1.5rem 0;">
+      No videos match your search.
+    </p>
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
+  <!-- ════════════════════════════════════════════════════════════
        Per-subject panels with sub-subject sections + search
-       ══════════════════════════════════════════════════════════ -->
+       ════════════════════════════════════════════════════════════ -->
   <div th:each="s : ${subjects}"
        class="tab-panel"
        th:id="'tab-' + ${s.id}">
 
     <!-- Search field -->
-    <div class="search-bar">
+    <div class="vid-search-bar">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="flex-shrink:0;opacity:.45">
+        <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
+      </svg>
       <input type="text"
-             th:placeholder="'Search ' + ${s.name} + ' videos…'"
+             th:placeholder="'Search ' + ${s.name} + ' lessons…'"
              th:id="'search-' + ${s.id}"
              autocomplete="off">
-      <span class="search-count" th:id="'count-' + ${s.id}"></span>
+      <span class="vid-search-count" th:id="'count-' + ${s.id}"></span>
     </div>
 
     <!-- No videos at all -->
-    <div th:if="${videosByCat[s.id] == null or #maps.isEmpty(videosByCat[s.id])}" class="empty">
-      No videos in this subject yet.
+    <div th:if="${videosByCat[s.id] == null or #maps.isEmpty(videosByCat[s.id])}"
+         class="muted" style="padding:2rem 0;font-style:italic;">
+      No lessons in this subject yet.
     </div>
 
     <!-- Sub-subject sections -->
     <div th:if="${videosByCat[s.id] != null and !#maps.isEmpty(videosByCat[s.id])}"
          th:id="'sections-' + ${s.id}">
       <div th:each="entry : ${videosByCat[s.id]}"
-           class="category-section"
+           class="cat-section"
            th:id="'cat-' + ${s.id} + '-' + ${entry.key}">
-        <h2 class="category-title">
+        <h2 class="cat-title">
           <span th:text="${entry.key}">Category</span>
           <span class="cat-count" th:text="${#lists.size(entry.value)}">0</span>
         </h2>
@@ -167,27 +121,32 @@
              th:id="'grid-' + ${s.id} + '-' + ${entry.key}">
           <a th:each="v : ${entry.value}"
              th:href="@{|/videos/${v.id}|}"
-             class="video-card"
+             class="video-card card"
              th:data-title="${v.title?.toLowerCase()}"
              th:data-category="${v.category != null ? v.category?.toLowerCase() : 'general'}">
             <div class="thumb"
                  th:if="${v.provider == 'youtube' and v.embedId != null}"
                  th:style="|background-image:url('https://img.youtube.com/vi/${v.embedId}/hqdefault.jpg')|"></div>
-            <div class="thumb" th:unless="${v.provider == 'youtube' and v.embedId != null}"><span>Watch</span></div>
+            <div class="thumb thumb-blank" th:unless="${v.provider == 'youtube' and v.embedId != null}">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".4"><path d="M7 5l12 7-12 7V5z" fill="currentColor" stroke="none"/></svg>
+            </div>
             <div class="card-body">
-              <h3 th:text="${v.title}">Title</h3>
-              <p class="muted" th:text="${#temporals.format(v.createdAt,'MMM d, yyyy')}">Date</p>
+              <h3 style="margin:0 0 .35rem;font-size:.95rem;font-weight:500;line-height:1.35;"
+                  th:text="${v.title}">Title</h3>
+              <p class="muted" style="font-size:.8rem;margin:0;"
+                 th:text="${#temporals.format(v.createdAt,'MMM d, yyyy')}">Date</p>
             </div>
           </a>
         </div>
       </div>
-      <p class="no-results" th:id="'noResults-' + ${s.id}" style="display:none;">
-        No videos match your search.
+      <p class="no-results" th:id="'noResults-' + ${s.id}"
+         style="display:none;color:var(--ink-4);font-style:italic;padding:1.5rem 0;">
+        No lessons match your search.
       </p>
     </div>
   </div>
 
-</main>
+</div><!-- .page -->
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
@@ -195,7 +154,7 @@
 (function () {
     // ── Tab switching ──────────────────────────────────────────
     const tabBar  = document.getElementById('tabBar');
-    const tabBtns = Array.from(tabBar.querySelectorAll('.tab-btn'));
+    const tabBtns = Array.from(tabBar.querySelectorAll('.pill-tab'));
     const panels  = Array.from(document.querySelectorAll('.tab-panel'));
 
     function activate(tabId) {
@@ -241,10 +200,8 @@
         const input    = document.getElementById('search-' + sid);
         const counter  = document.getElementById('count-' + sid);
         const noRes    = document.getElementById('noResults-' + sid);
-        const sections = panel.querySelectorAll('.category-section');
+        const sections = panel.querySelectorAll('.cat-section');
         if (!input || sections.length === 0) return;
-
-        const allCards = Array.from(panel.querySelectorAll('.video-card'));
 
         input.addEventListener('input', () => {
             const q = input.value.trim().toLowerCase();
@@ -260,7 +217,6 @@
                     c.hidden = !match;
                     if (match) sectionShown++;
                 });
-                // Hide entire section if no cards match
                 section.style.display = sectionShown === 0 ? 'none' : '';
                 totalShown += sectionShown;
             });

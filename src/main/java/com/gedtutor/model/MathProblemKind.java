@@ -47,5 +47,14 @@ public enum MathProblemKind {
     VOLUME,
 
     /** Surface area of a 3D shape (rectangular prism, cylinder, sphere). */
-    SURFACE_AREA
+    SURFACE_AREA,
+
+    // --- Phase 4: custom / free-form ---
+    /**
+     * A teacher-authored template using {placeholder} tokens, e.g. "{a}x^2 + {b}x + {c} = 0".
+     * Each unique placeholder is replaced by a random integer drawn from [minValue, maxValue].
+     * The rendered expression is shown to the student (display-only; no auto-grading).
+     * parametersJson shape: {"template":"{a}x^2 + {b}x + {c} = 0","minValue":1,"maxValue":20}
+     */
+    FREE_FORM
 }

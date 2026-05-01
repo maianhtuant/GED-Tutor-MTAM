@@ -60,7 +60,7 @@ public class VideoController {
 
     @GetMapping("/{id}")
     public String detail(@PathVariable Long id, Model model, RedirectAttributes ra) {
-        Video v = videoService.findById(id);
+        Video v = videoService.findByIdWithTemplate(id);
         if (v.getVisibility() != VideoVisibility.PUBLIC) {
             ra.addFlashAttribute("error", "This video is not available.");
             return "redirect:/videos";

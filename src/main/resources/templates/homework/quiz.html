@@ -93,7 +93,7 @@
                 Question <span th:text="${stat.index + 1}"></span> of <span th:text="${#lists.size(questions)}"></span>
                 <span class="badge-type" th:text="${q.type}"></span>
             </div>
-            <p style="font-weight:600;" th:text="${q.questionText}"></p>
+            <p style="font-weight:600;" th:attr="data-latex=${q.questionText}"></p>
 
             <!-- Multiple Choice -->
             <div th:if="${q.type.name() == 'MULTIPLE_CHOICE'}" th:id="'input-area-' + ${q.id}">
@@ -317,6 +317,21 @@
     });
 
     // ── Final submit (called by Submit Quiz button) ──
+    function renderMathInQuiz() {
+      document.querySelectorAll('[data-latex]').forEach(el => {
+        const latex = el.getAttribute('data-latex') || '';
+        if (!latex || !window.katex) { el.textContent = latex; return; }
+        if (latex.includes('\\')) {
+          // Raw LaTeX — render it as display math
+          try { el.innerHTML = katex.renderToString(latex, { displayMode: true, throwOnError: false }); }
+          catch(e) { el.textContent = latex; }
+        } else {
+          // Plain text question — just show it as-is
+          el.textContent = latex;
+        }
+      });
+    }
+
     function finishQuiz() {
         const attemptId = document.querySelector('[data-attemptid]')?.dataset?.attemptid;
         if (!attemptId) return;
@@ -347,5 +362,7 @@
         });
     }
 </script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script>renderMathInQuiz();</script>
 </body>
 </html>

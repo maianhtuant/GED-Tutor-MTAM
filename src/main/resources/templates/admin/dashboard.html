@@ -9,7 +9,7 @@
     <div class="stats">
         <div class="stat">
             <h2 th:text="${videoCount}">0</h2>
-            <p>Videos</p>
+            <p>Lessons</p>
             <a th:href="@{/admin/videos}">Manage &rarr;</a>
         </div>
         <div class="stat">
@@ -36,6 +36,11 @@
             <h2>&nbsp;</h2>
             <p>Practice sets</p>
             <a th:href="@{/admin/practice-sets}">Manage &rarr;</a>
+        </div>
+        <div class="stat">
+            <h2>➗</h2>
+            <p>Math Templates</p>
+            <a th:href="@{/admin/math-templates}">Manage &rarr;</a>
         </div>
     </div>
 </main>

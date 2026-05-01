@@ -67,7 +67,7 @@
       <span class="badge-type" th:text="${problem.shape.name()}">SCALAR</span>
     </div>
 
-    <p class="question-text" th:text="${problem.questionText}">Solve for x: 2x + 3 = 7</p>
+    <p class="question-text" th:attr="data-latex=${problem.questionText}">Solve for x: 2x + 3 = 7</p>
 
     <p class="hint" th:if="${problem.shape.name() == 'SCALAR' and !problem.hasSpecialAnswer()}">
       Type one number. Decimals or fractions both work: <code>2.5</code> or <code>5/2</code>.
@@ -119,13 +119,30 @@
     }
   }
 
+  function renderLatex(el, latex) {
+    if (!latex || !window.katex) { el.textContent = latex || ''; return; }
+    try {
+      el.innerHTML = katex.renderToString(latex, { displayMode: true, throwOnError: false });
+    } catch(e) {
+      el.textContent = latex;
+    }
+  }
+
   function showFeedback(qidx, correct, expected) {
     const card = document.getElementById('card-' + qidx);
     const box  = document.getElementById('feedback-' + qidx);
     card.classList.add(correct ? 'correct' : 'incorrect');
     box.classList.add(correct ? 'correct' : 'incorrect');
     box.querySelector('.feedback-label').textContent = correct ? '✅ Correct! ' : '❌ Incorrect. ';
-    box.querySelector('.feedback-answer').textContent = correct ? '' : ('Expected: ' + expected);
+    const answerEl = box.querySelector('.feedback-answer');
+    if (correct) {
+      answerEl.textContent = '';
+    } else {
+      answerEl.textContent = 'Expected: ';
+      const mathSpan = document.createElement('span');
+      renderLatex(mathSpan, expected);
+      answerEl.appendChild(mathSpan);
+    }
     box.style.display = 'block';
   }
 
@@ -175,6 +192,13 @@
       .catch(err => console.error('completeAttempt failed:', err));
   }
 
+  // renderMathQuestions() is called after the KaTeX <script> tag below loads.
+  function renderMathQuestions() {
+    document.querySelectorAll('.question-text[data-latex]').forEach(el => {
+      renderLatex(el, el.getAttribute('data-latex'));
+    });
+  }
+
   document.querySelectorAll('.answer-submit').forEach(btn => {
     btn.addEventListener('click', () =>
       submitAnswer(parseInt(btn.getAttribute('data-qidx'), 10)));
@@ -188,5 +212,9 @@
     });
   });
 </script>
+<!-- KaTeX JS loaded synchronously. Once the parser reaches the next line,
+     window.katex is defined and we can call renderMathQuestions() immediately. -->
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script>renderMathQuestions();</script>
 </body>
 </html>

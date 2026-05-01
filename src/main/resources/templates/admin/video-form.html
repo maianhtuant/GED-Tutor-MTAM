@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Video form')}"></head>
+<head th:replace="~{fragments/layout :: head('Lesson form')}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container narrow">
-    <a th:href="@{/admin/videos}" class="back-link">&larr; Back to videos</a>
-    <h1 th:text="${form.id != null ? 'Edit video' : 'New video'}">Video</h1>
+    <a th:href="@{/admin/videos}" class="back-link">&larr; Back to lessons</a>
+    <h1 th:text="${form.id != null ? 'Edit lesson' : 'New lesson'}">Lesson</h1>
 
     <form th:action="${form.id != null} ? @{|/admin/videos/${form.id}/edit|} : @{/admin/videos/new}"
           th:object="${form}" method="post" class="card">
@@ -50,6 +50,21 @@
             <select th:field="*{visibility}" required>
                 <option th:each="vis : ${visibilities}" th:value="${vis}" th:text="${vis}"></option>
             </select>
+        </label>
+
+        <label>Math practice model
+            <select th:field="*{mathTemplateId}">
+                <option value="">— none —</option>
+                <option th:each="t : ${mathTemplates}"
+                        th:value="${t.id}"
+                        th:text="${t.label + ' (' + t.kind + ')'}">
+                </option>
+            </select>
+            <small class="muted">
+                When set, the video's sidebar will show this template's label and link students
+                to a live practice problem of that type.
+                <a th:href="@{/admin/math-templates}" target="_blank" style="color:var(--accent-ink);">Manage templates ↗</a>
+            </small>
         </label>
 
         <button type="submit" class="btn btn-primary">Save</button>

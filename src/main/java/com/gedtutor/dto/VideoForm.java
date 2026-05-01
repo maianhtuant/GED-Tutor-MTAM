@@ -28,6 +28,9 @@ public class VideoForm {
     @NotNull
     private VideoVisibility visibility;
 
+    /** Optional: link to a MathProblemTemplate shown in the video detail sidebar. */
+    private Long mathTemplateId;
+
     public VideoForm() {}
 
     public Long getId() { return id; }
@@ -50,4 +53,7 @@ public class VideoForm {
 
     public VideoVisibility getVisibility() { return visibility; }
     public void setVisibility(VideoVisibility visibility) { this.visibility = visibility; }
+
+    public Long getMathTemplateId() { return mathTemplateId; }
+    public void setMathTemplateId(Long mathTemplateId) { this.mathTemplateId = mathTemplateId; }
 }

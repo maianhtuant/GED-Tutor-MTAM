@@ -11,33 +11,45 @@
     <meta name="_csrf_header" th:content="${_csrf != null ? _csrf.headerName : ''}"/>
     <title th:text="${title} ?: 'GED Tutor'">GED Tutor</title>
     <link rel="stylesheet" th:href="@{/css/styles.css}">
+    <!-- KaTeX CSS (layout only — JS is loaded per-page that needs it) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 </head>
 <body>
 
 <nav th:fragment="nav" class="navbar">
-    <a th:href="@{/}" class="brand">GED Tutor</a>
-    <div class="nav-links">
-        <a th:href="@{/videos}">Videos</a>
-        <a th:href="@{/homework}" sec:authorize="isAuthenticated()">Quiz</a>
-        <a th:href="@{/practice}" sec:authorize="isAuthenticated()">Practice</a>
-        <a th:href="@{/admin}" sec:authorize="hasRole('ADMIN')">Admin</a>
-    </div>
-    <div class="nav-auth">
-        <span sec:authorize="isAuthenticated()">
-            Hi, <b sec:authentication="name">user</b>
-            <form th:action="@{/logout}" method="post" style="display:inline">
-                <button type="submit" class="link-btn">Logout</button>
-            </form>
-        </span>
-        <span sec:authorize="!isAuthenticated()">
-            <a th:href="@{/login}">Login</a>
-            <a th:href="@{/register}" class="btn btn-primary">Sign up</a>
-        </span>
+    <div class="nav-inner">
+        <a th:href="@{/}" class="brand">
+            <span class="brand-mark" aria-hidden="true">
+                <svg viewBox="0 0 32 32" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <circle cx="16" cy="16" r="13"/>
+                    <path d="M9 11h14M9 16h14M9 21h14"/>
+                </svg>
+            </span>
+            GED<sup style="color:var(--accent);margin-left:1px;">·</sup>Tutor
+        </a>
+        <div class="nav-links">
+            <a th:href="@{/videos}">Lessons</a>
+            <a th:href="@{/homework}" sec:authorize="isAuthenticated()">Quiz</a>
+            <a th:href="@{/practice}" sec:authorize="isAuthenticated()">Practice</a>
+            <a th:href="@{/admin}" sec:authorize="hasRole('ADMIN')">Admin</a>
+        </div>
+        <div class="nav-right">
+            <span sec:authorize="isAuthenticated()" style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:13.5px;color:var(--ink-2);font-weight:500;">Hi, <b sec:authentication="name">user</b></span>
+                <form th:action="@{/logout}" method="post" style="display:inline;margin:0;">
+                    <button type="submit" class="btn btn-sm">Logout</button>
+                </form>
+            </span>
+            <span sec:authorize="!isAuthenticated()">
+                <a th:href="@{/login}" class="btn">Log in</a>
+                <a th:href="@{/register}" class="btn btn-primary">Start free</a>
+            </span>
+        </div>
     </div>
 </nav>
 
 <footer th:fragment="footer" class="footer">
-    <p>&copy; GED Tutor &mdash; study for your GED with video lessons &amp; homework.</p>
+    <p>&copy; GED Tutor &mdash; study for your GED with lessons &amp; homework.</p>
 </footer>
 
 </body>

@@ -311,3 +311,7 @@ GROUP BY s.name ORDER BY s.name;
 
 ALTER TABLE homework ADD COLUMN IF NOT EXISTS math_quiz BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE homework ADD COLUMN IF NOT EXISTS math_question_count INTEGER DEFAULT 40;
+
+psql -U postgres -d gedtutor -c "SELECT id, title FROM homework;"
+psql -U postgres -d gedtutor -c "SELECT COUNT(*) FROM questions;"
+psql -U postgres -d gedtutor -c "SELECT COUNT(*) FROM homework_questions;"

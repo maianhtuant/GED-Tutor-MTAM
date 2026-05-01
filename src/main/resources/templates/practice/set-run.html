@@ -90,7 +90,8 @@
       One answer. Decimals or fractions are fine: <code>2.5</code> or <code>5/2</code>.
     </p>
     <p class="hint" th:if="${problem.shape.name() == 'UNORDERED'}">
-      Two answers — comma-separated, any order. e.g. <code>2, -3</code>.
+      Two answers — comma-separated, any order. e.g. <code>2, −3</code>.
+      If there's no real solution, type <code>no real solution</code>.
     </p>
     <p class="hint" th:if="${problem.shape.name() == 'ORDERED'}">
       Two values in order: x first, then y. e.g. <code>2, 3</code> or <code>(2, 3)</code>.
@@ -160,7 +161,20 @@
     card.classList.add(correct ? 'correct' : 'incorrect');
     box.classList.add(correct ? 'correct' : 'incorrect');
     box.querySelector('.feedback-label').textContent = correct ? '✅ Correct! ' : '❌ Incorrect. ';
-    box.querySelector('.feedback-answer').textContent = correct ? '' : ('Expected: ' + expected);
+    const ansEl = box.querySelector('.feedback-answer');
+    if (correct) {
+      ansEl.textContent = '';
+    } else {
+      ansEl.textContent = 'Expected: ';
+      const span = document.createElement('span');
+      if (expected && expected.includes('\\') && window.katex) {
+        try { span.innerHTML = katex.renderToString(expected, { displayMode: false, throwOnError: false }); }
+        catch(e) { span.textContent = expected; }
+      } else {
+        span.textContent = expected || '';
+      }
+      ansEl.appendChild(span);
+    }
     box.style.display = 'block';
   }
 
@@ -214,7 +228,12 @@
 
   setProgress();
 
-  /* ── KaTeX math rendering ── */
+</script>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script>
+  /* ── KaTeX math rendering ──────────────────────────────────────────────────
+     Keep these helpers in a plain <script> (no th:inline) so Thymeleaf's
+     JavaScript-inline mode cannot mangle backslashes in regex literals.     */
 
   function escHtml(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -236,69 +255,91 @@
   }
 
   function renderMathQuestions() {
-    document.querySelectorAll('.question-text[data-raw]').forEach(el => {
-      const raw = el.getAttribute('data-raw') || '';
-      const newlineIdx = raw.indexOf('\n');
+    document.querySelectorAll('.question-text[data-raw]').forEach(function(el) {
+      var raw = el.getAttribute('data-raw') || '';
+
+      // ── 0. Raw LaTeX (FREE_FORM templates) ──────────────────────────────────
+      // FREE_FORM questions arrive as LaTeX strings like \frac{a}{b} + \frac{c}{d}.
+      // Detect by the presence of a backslash and render directly.
+      if (raw.indexOf('\\') !== -1) {
+        try {
+          el.innerHTML = katex.renderToString(raw, { displayMode: true, throwOnError: false });
+        } catch(e) { el.textContent = raw; }
+        return;
+      }
+
+      var newlineIdx = raw.indexOf('\n');
 
       // ── 1. Multi-line → system of equations ──────────────────────────────
-      // Format: "Solve the system:\n  5x = -8\n  7x + y = 8"
       if (newlineIdx !== -1) {
-        const label = raw.substring(0, newlineIdx).trim();
-        const lines = raw.substring(newlineIdx + 1)
-          .split('\n').map(l => l.trim()).filter(l => l.length > 0);
-        const mathStr = lines.length === 1
+        var label = raw.substring(0, newlineIdx).trim();
+        var lines = raw.substring(newlineIdx + 1)
+          .split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 0; });
+        var mathStr = lines.length === 1
           ? toLatex(lines[0])
           : '\\begin{cases} ' + lines.map(toLatex).join(' \\\\ ') + ' \\end{cases}';
-        el.innerHTML =
-          '<span>' + escHtml(label) + '</span>' +
-          '<div class="math-expr">' +
-            katex.renderToString(mathStr, { displayMode: true, throwOnError: false }) +
-          '</div>';
+        try {
+          el.innerHTML =
+            '<span>' + escHtml(label) + '</span>' +
+            '<div class="math-expr">' +
+              katex.renderToString(mathStr, { displayMode: true, throwOnError: false }) +
+            '</div>';
+        } catch(e) { el.textContent = raw; }
         return;
       }
 
       // ── 2. Function evaluation ─────────────────────────────────────────────
-      // Format: "Given f(x) = 3x + 5, what is f(2)?"  (or quadratic variant)
-      const funcMatch = raw.match(/^(Given f\(x\) = )([^,]+)(, what is .+)$/);
+      // Format: "Given f(x) = 3x + 5, what is f(2)?"
+      var funcMatch = raw.match(/^(Given f\(x\) = )([^,]+)(, what is .+)$/);
       if (funcMatch) {
-        el.innerHTML =
-          escHtml(funcMatch[1]) +
-          '<span class="math-inline">' +
-            katex.renderToString(toLatex(funcMatch[2]), { displayMode: false, throwOnError: false }) +
-          '</span>' +
-          escHtml(funcMatch[3]);
+        try {
+          el.innerHTML =
+            escHtml(funcMatch[1]) +
+            '<span class="math-inline">' +
+              katex.renderToString(toLatex(funcMatch[2]), { displayMode: false, throwOnError: false }) +
+            '</span>' +
+            escHtml(funcMatch[3]);
+        } catch(e) { el.textContent = raw; }
         return;
       }
 
       // ── 3. Single-line "Label: PURE_MATH_EXPR" ───────────────────────────
-      // Covers: quadratic, linear, proportion
-      // e.g. "Solve for x: 2x^2 - 3x + 4 = 0"
-      //      "Solve for x: 3x + 5 = 8"
-      //      "Solve the proportion: 3/4 = 5/x"
-      const colonIdx = raw.indexOf(': ');
+      // e.g. "Solve for x: 2x^2 - 3x + 4 = 0"  /  "Solve the proportion: 3/4 = 5/x"
+      var colonIdx = raw.indexOf(': ');
       if (colonIdx !== -1) {
-        const label = raw.substring(0, colonIdx);
-        const expr  = raw.substring(colonIdx + 2).trim();
+        var lbl  = raw.substring(0, colonIdx);
+        var expr = raw.substring(colonIdx + 2).trim();
         if (isPureMathExpr(expr)) {
-          el.innerHTML =
-            '<span>' + escHtml(label) + ':</span>' +
-            '<div class="math-expr">' +
-              katex.renderToString(toLatex(expr), { displayMode: true, throwOnError: false }) +
-            '</div>';
+          try {
+            el.innerHTML =
+              '<span>' + escHtml(lbl) + ':</span>' +
+              '<div class="math-expr">' +
+                katex.renderToString(toLatex(expr), { displayMode: true, throwOnError: false }) +
+              '</div>';
+          } catch(e) { el.textContent = raw; }
           return;
         }
       }
 
+      // ── 3b. Bare math expression (FREE_FORM — no label prefix) ───────────
+      // e.g. "3x^2 + 3x + 4 = 0"  or  "\frac{3}{4} + \frac{1}{2}"
+      // Backslash case already handled above; this catches plain-notation bare exprs.
+      if (isPureMathExpr(raw)) {
+        try {
+          el.innerHTML =
+            '<div class="math-expr">' +
+              katex.renderToString(toLatex(raw), { displayMode: true, throwOnError: false }) +
+            '</div>';
+        } catch(e) { el.textContent = raw; }
+        return;
+      }
+
       // ── 4. Fallback: plain word problem ──────────────────────────────────
-      // Slope, area/perimeter, percentage, stats, Pythagorean, volume, surface area
       el.textContent = raw;
     });
   }
 
-  const katexScript = document.createElement('script');
-  katexScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js';
-  katexScript.onload = renderMathQuestions;
-  document.head.appendChild(katexScript);
+  renderMathQuestions();
 </script>
 </body>
 </html>

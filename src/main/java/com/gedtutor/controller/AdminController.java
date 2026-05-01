@@ -5,6 +5,7 @@ import com.gedtutor.dto.QuestionForm;
 import com.gedtutor.dto.SubjectForm;
 import com.gedtutor.dto.VideoForm;
 import com.gedtutor.model.*;
+import com.gedtutor.repository.MathProblemTemplateRepository;
 import com.gedtutor.service.HomeworkService;
 import com.gedtutor.service.QuizService;
 import com.gedtutor.service.SubjectService;
@@ -34,15 +35,18 @@ public class AdminController {
     private final HomeworkService homeworkService;
     private final QuizService quizService;
     private final SubjectService subjectService;
+    private final MathProblemTemplateRepository mathTemplateRepository;
 
     public AdminController(VideoService videoService, UserService userService,
                            HomeworkService homeworkService, QuizService quizService,
-                           SubjectService subjectService) {
+                           SubjectService subjectService,
+                           MathProblemTemplateRepository mathTemplateRepository) {
         this.videoService = videoService;
         this.userService = userService;
         this.homeworkService = homeworkService;
         this.quizService = quizService;
         this.subjectService = subjectService;
+        this.mathTemplateRepository = mathTemplateRepository;
     }
 
     // ===================== Dashboard =====================
@@ -156,6 +160,7 @@ public class AdminController {
         model.addAttribute("form", form);
         model.addAttribute("subjects", subjectService.listActive());
         model.addAttribute("visibilities", VideoVisibility.values());
+        model.addAttribute("mathTemplates", mathTemplateRepository.findByActiveTrueOrderByIdAsc());
         return "admin/video-form";
     }
 
@@ -168,6 +173,7 @@ public class AdminController {
         if (binding.hasErrors()) {
             model.addAttribute("subjects", subjectService.listActive());
             model.addAttribute("visibilities", VideoVisibility.values());
+            model.addAttribute("mathTemplates", mathTemplateRepository.findByActiveTrueOrderByIdAsc());
             return "admin/video-form";
         }
         User uploader = userService.findByUsername(principal.getUsername());
@@ -187,9 +193,11 @@ public class AdminController {
         form.setSubjectId(v.getSubject() != null ? v.getSubject().getId() : null);
         form.setCategory(v.getCategory());
         form.setVisibility(v.getVisibility());
+        form.setMathTemplateId(v.getMathTemplate() != null ? v.getMathTemplate().getId() : null);
         model.addAttribute("form", form);
         model.addAttribute("subjects", subjectService.listActive());
         model.addAttribute("visibilities", VideoVisibility.values());
+        model.addAttribute("mathTemplates", mathTemplateRepository.findByActiveTrueOrderByIdAsc());
         return "admin/video-form";
     }
 
@@ -202,6 +210,7 @@ public class AdminController {
         if (binding.hasErrors()) {
             model.addAttribute("subjects", subjectService.listActive());
             model.addAttribute("visibilities", VideoVisibility.values());
+            model.addAttribute("mathTemplates", mathTemplateRepository.findByActiveTrueOrderByIdAsc());
             return "admin/video-form";
         }
         videoService.update(id, form);

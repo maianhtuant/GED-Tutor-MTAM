@@ -1,32 +1,385 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head(${video.title})}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
-<main class="container">
-    <a th:href="@{/videos}" class="back-link">&larr; All videos</a>
-    <h1 th:text="${video.title}">Video Title</h1>
-    <p><span class="badge" th:text="${video.subject != null ? video.subject.name : ''}">Math</span></p>
+<div class="page lesson-page">
 
-    <div class="video-frame" th:if="${embedUrl != null}">
-        <iframe th:src="${embedUrl}"
-                frameborder="0"
+  <!-- ── Breadcrumb ────────────────────────────────────────────── -->
+  <div class="lesson-crumbs">
+    <a th:href="@{/videos}">lessons</a>
+    <span class="sep">/</span>
+    <span th:text="${video.subject != null ? video.subject.name.toLowerCase() : 'lesson'}">math</span>
+    <span class="sep">/</span>
+    <span class="here" th:text="${video.title}">lesson title</span>
+  </div>
+
+  <div class="lesson-grid">
+
+    <!-- ── Left: main content ────────────────────────────────────── -->
+    <section class="lesson-main">
+
+      <header class="lh">
+        <span class="kicker mono"
+              th:text="${(video.subject != null ? video.subject.name : 'Lesson') + (video.category != null and !video.category.isEmpty() ? ' · ' + video.category : '')}">
+          MATH · ALGEBRA
+        </span>
+        <h1 th:text="${video.title}">Systems of equations</h1>
+        <p class="lh-lede" th:if="${video.description}" th:text="${video.description}">
+          Description of the lesson goes here.
+        </p>
+      </header>
+
+      <!-- Video player -->
+      <div class="player">
+        <iframe th:if="${embedUrl != null}"
+                th:src="${embedUrl}"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                 allowfullscreen></iframe>
-    </div>
+        <div th:unless="${embedUrl != null}" class="player-fallback">
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M7 5l12 7-12 7V5z" fill="currentColor" stroke="none" opacity=".4"/></svg>
+          <p class="muted" style="font-size:14px;">Video unavailable —
+            <a th:href="${video.videoUrl}" target="_blank" rel="noopener">open on source site ↗</a>
+          </p>
+        </div>
+      </div>
 
-    <div class="alert alert-error" th:if="${embedUrl == null}">
-        Unable to embed this video. <a th:href="${video.videoUrl}" target="_blank">Open it on the source site</a>.
-    </div>
+      <!-- Tab bar -->
+      <nav class="tabs" role="tablist">
+        <button class="tab active" data-tab="notes"     role="tab" aria-selected="true">Notes</button>
+        <button class="tab"        data-tab="resources" role="tab" aria-selected="false">Resources</button>
+      </nav>
 
-    <section class="description">
-        <h3>About this lesson</h3>
-        <p th:text="${video.description}" th:if="${video.description}">description</p>
-        <p class="muted" th:unless="${video.description}">No description provided.</p>
+      <!-- Notes panel -->
+      <div id="notes" class="tab-content">
+        <article class="notes" th:if="${video.description}">
+          <p th:text="${video.description}"></p>
+        </article>
+        <article class="notes" th:unless="${video.description}">
+          <p class="muted">No notes for this lesson yet.</p>
+        </article>
+      </div>
+
+      <!-- Resources panel -->
+      <div id="resources" class="tab-content" style="display:none;">
+        <div class="resources">
+          <a th:href="@{/practice}" class="res-row">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 5h12L11 12l7 7H6"/></svg>
+            <span>Practice problems for this subject</span>
+            <span class="small">quiz</span>
+          </a>
+          <a th:href="@{/videos}" class="res-row">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M10 9l6 3.5L10 16V9z" fill="currentColor" stroke="none"/></svg>
+            <span>More lessons in
+              <span th:text="${video.subject != null ? video.subject.name : 'this subject'}">Math</span>
+            </span>
+            <span class="small">lessons</span>
+          </a>
+        </div>
+      </div>
+
     </section>
-</main>
+
+    <!-- ── Right: sticky sidebar ─────────────────────────────────── -->
+    <aside class="lesson-side">
+
+      <!-- Practice panel — dynamic when a math template is linked, static fallback otherwise -->
+      <div class="quiz" id="quizPanel"
+           th:attr="data-template-id=${video.mathTemplate != null ? video.mathTemplate.id : ''},
+                    data-template-label=${video.mathTemplate != null ? video.mathTemplate.label : ''},
+                    data-more-url=${video.mathTemplate != null ? '/practice/math/' + video.mathTemplate.id : '/practice'}">
+
+        <header class="quiz-hd">
+          <span class="kicker mono" id="quizLabel"
+                th:text="${video.mathTemplate != null ? video.mathTemplate.label : 'Practice'}">Practice</span>
+          <div class="quiz-pips">
+            <span class="pip now"></span>
+            <span class="pip"></span>
+            <span class="pip"></span>
+            <span class="pip"></span>
+          </div>
+        </header>
+
+        <!-- Question text — populated by JS when template is linked, static otherwise -->
+        <div class="quiz-q" id="quizQuestion">
+          <span th:if="${video.mathTemplate == null}">
+            Solve for x: &nbsp;<span class="mq">3x − 7 = 2x + 5</span>
+          </span>
+          <span th:if="${video.mathTemplate != null}"
+                class="muted" style="font-size:13px;">Loading problem…</span>
+        </div>
+
+        <!-- Dynamic answer input (shown when template linked) -->
+        <div id="quizAnswerWrap" th:if="${video.mathTemplate != null}" style="margin:14px 0 0;">
+          <input id="quizAnswerInput" type="text"
+                 placeholder="Type your answer…"
+                 autocomplete="off"
+                 style="width:100%;padding:10px 14px;border:1px solid var(--line);border-radius:8px;
+                        font-size:15px;font-family:var(--mono);background:var(--paper);color:var(--ink);
+                        outline:none;box-sizing:border-box;">
+          <div id="quizHint" class="muted" style="font-size:12px;margin-top:5px;"></div>
+        </div>
+
+        <!-- Static MCQ (shown when no template linked) -->
+        <div id="quizChoices" th:if="${video.mathTemplate == null}">
+          <button class="choice" data-correct="false" onclick="pickChoice(this)">
+            <span class="choice-key mono">a</span><span class="mono">x = −12</span>
+          </button>
+          <button class="choice" data-correct="false" onclick="pickChoice(this)">
+            <span class="choice-key mono">b</span><span class="mono">x = −2</span>
+          </button>
+          <button class="choice" data-correct="true" onclick="pickChoice(this)">
+            <span class="choice-key mono">c</span><span class="mono">x = 12</span>
+          </button>
+          <button class="choice" data-correct="false" onclick="pickChoice(this)">
+            <span class="choice-key mono">d</span><span class="mono">x = 2</span>
+          </button>
+        </div>
+
+        <div id="quizFeedback" style="display:none;"></div>
+
+        <div class="quiz-actions">
+          <button class="btn-primary" id="checkBtn" disabled
+                  onclick="checkAnswer()">Check answer</button>
+          <button class="btn-primary" id="nextBtn" style="display:none;background:var(--ink-3);"
+                  onclick="loadNextProblem()">Next problem →</button>
+        </div>
+
+        <div id="practiceLink" style="display:none;margin-top:4px;text-align:center;">
+          <a id="morePracticeLink"
+             th:href="${video.mathTemplate != null} ? @{/practice/math/{tid}(tid=${video.mathTemplate.id})} : @{/practice}"
+             style="font-size:13px;color:var(--accent-ink);">
+            More practice problems →
+          </a>
+        </div>
+      </div>
+
+      <!-- Tutor / ask panel -->
+      <div class="ask">
+        <div class="ask-hd">Stuck? Ask the tutor.</div>
+        <div class="ask-input">
+          <input type="text" id="askInput" placeholder="Why did we add the equations there?"
+                 sec:authorize="isAuthenticated()"/>
+          <input type="text" placeholder="Log in to ask a question"
+                 disabled style="opacity:.6;"
+                 sec:authorize="!isAuthenticated()"/>
+          <button class="ask-send" onclick="submitAsk()" sec:authorize="isAuthenticated()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12l15-7-7 15-2-6-6-2z"/></svg>
+          </button>
+          <button class="ask-send" disabled style="opacity:.5;" sec:authorize="!isAuthenticated()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12l15-7-7 15-2-6-6-2z"/></svg>
+          </button>
+        </div>
+        <div class="ask-hint" id="askHint">replies in ~5 sec · reads your work</div>
+      </div>
+
+    </aside>
+  </div>
+</div>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<!-- KaTeX JS — only loaded on the lesson detail page -->
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+<script>
+// ── Tab switching ────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    document.querySelectorAll('.tab').forEach(function(t) {
+      t.classList.remove('active');
+      t.setAttribute('aria-selected', 'false');
+    });
+    document.querySelectorAll('.tab-content').forEach(function(p) {
+      p.style.display = 'none';
+    });
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected', 'true');
+    var target = document.getElementById(btn.dataset.tab);
+    if (target) target.style.display = 'block';
+  });
+});
+
+// ── Practice widget ──────────────────────────────────────────────
+var quizPanel    = document.getElementById('quizPanel');
+var templateId   = quizPanel ? quizPanel.dataset.templateId : '';
+var currentToken = null;
+
+// ── Dynamic mode (math template linked) ─────────────────────────
+if (templateId) {
+  var answerInput = document.getElementById('quizAnswerInput');
+  var checkBtn    = document.getElementById('checkBtn');
+  var nextBtn     = document.getElementById('nextBtn');
+
+  // Enable check button when input has text
+  answerInput.addEventListener('input', function() {
+    checkBtn.disabled = !answerInput.value.trim();
+  });
+
+  // Also allow Enter key to check
+  answerInput.addEventListener('keydown', function(e) {
+    if (e.key === 'Enter' && !checkBtn.disabled) checkAnswer();
+  });
+
+  loadNextProblem();
+}
+
+/**
+ * Render the question into el using KaTeX for the equation part.
+ * Falls back to plain text if KaTeX is not yet loaded or the string is not valid LaTeX.
+ *
+ * @param {Element} el          - target DOM element
+ * @param {string}  preamble    - text label, e.g. "Solve for x:" (may be empty)
+ * @param {string}  equation    - LaTeX equation string, e.g. "8x^2 + 4x + 10 = 0"
+ * @param {string}  plainText   - full plain-text fallback
+ */
+function renderQuestion(el, preamble, equation, plainText) {
+  if (typeof katex === 'undefined') {
+    // KaTeX not loaded yet — plain text fallback
+    el.textContent = plainText || equation;
+    return;
+  }
+  try {
+    var html = '';
+    if (preamble) {
+      html += '<span class="q-pre" style="display:block;font-size:13px;color:var(--ink-3);margin-bottom:6px;">'
+            + preamble.replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            + '</span>';
+    }
+    // Render the equation in display mode so fractions / exponents are large and clear
+    html += katex.renderToString(equation, { throwOnError: false, displayMode: true });
+    el.innerHTML = html;
+  } catch (e) {
+    // Invalid LaTeX — show plain text
+    el.textContent = plainText || equation;
+  }
+}
+
+function loadNextProblem() {
+  if (!templateId) return;
+  var questionEl = document.getElementById('quizQuestion');
+  var hintEl     = document.getElementById('quizHint');
+  var fbEl       = document.getElementById('quizFeedback');
+  var checkBtn   = document.getElementById('checkBtn');
+  var nextBtn    = document.getElementById('nextBtn');
+  var answerInput = document.getElementById('quizAnswerInput');
+
+  // Reset UI
+  questionEl.innerHTML = '<span class="muted" style="font-size:13px;">Loading…</span>';
+  fbEl.style.display = 'none';
+  fbEl.textContent = '';
+  checkBtn.style.display = '';
+  checkBtn.disabled = true;
+  nextBtn.style.display = 'none';
+  document.getElementById('practiceLink').style.display = 'none';
+  if (answerInput) { answerInput.value = ''; answerInput.disabled = false; }
+  currentToken = null;
+
+  fetch('/api/practice/problem/' + templateId, { credentials: 'same-origin' })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) throw new Error(data.error);
+      currentToken = data.token;
+      renderQuestion(questionEl, data.questionPre, data.questionEq, data.questionText);
+      if (hintEl) hintEl.textContent = data.hint || '';
+    })
+    .catch(function(err) {
+      questionEl.textContent = 'Could not load a problem — try refreshing.';
+    });
+}
+
+function checkAnswer() {
+  if (!templateId) {
+    // Static MCQ mode (no template)
+    staticCheckAnswer();
+    return;
+  }
+  var answerInput = document.getElementById('quizAnswerInput');
+  var answer = answerInput ? answerInput.value.trim() : '';
+  if (!answer || !currentToken) return;
+
+  var checkBtn = document.getElementById('checkBtn');
+  checkBtn.disabled = true;
+  checkBtn.textContent = 'Checking…';
+
+  fetch('/api/practice/check', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ token: currentToken, answer: answer })
+  })
+    .then(function(r) {
+      if (!r.ok) throw new Error('Server error ' + r.status);
+      return r.json();
+    })
+    .then(function(data) {
+      // Handle session-expired error from server
+      if (data.error) {
+        var fbEl = document.getElementById('quizFeedback');
+        fbEl.className = 'quiz-feedback bad';
+        fbEl.textContent = data.error;
+        fbEl.style.display = 'block';
+        checkBtn.textContent = 'Check answer';
+        checkBtn.disabled = false;
+        return;
+      }
+      var fbEl = document.getElementById('quizFeedback');
+      fbEl.className = 'quiz-feedback ' + (data.correct ? 'good' : 'bad');
+      fbEl.textContent = data.correct
+        ? '✓ Correct! The answer is ' + data.expected + '.'
+        : '✗ ' + (data.feedback || 'Not quite.') + ' (answer: ' + data.expected + ')';
+      fbEl.style.display = 'block';
+      if (answerInput) answerInput.disabled = true;
+      checkBtn.style.display = 'none';
+      document.getElementById('nextBtn').style.display = '';
+      document.getElementById('practiceLink').style.display = 'block';
+    })
+    .catch(function() {
+      checkBtn.disabled = false;
+      checkBtn.textContent = 'Check answer';
+    });
+}
+
+// ── Static MCQ mode (no template linked) ────────────────────────
+var picked = null;
+
+function pickChoice(el) {
+  if (el.disabled) return;
+  document.querySelectorAll('.choice').forEach(function(c) { c.classList.remove('picked'); });
+  el.classList.add('picked');
+  picked = el;
+  document.getElementById('checkBtn').disabled = false;
+}
+
+function staticCheckAnswer() {
+  if (!picked) return;
+  var isCorrect = picked.dataset.correct === 'true';
+  document.querySelectorAll('.choice').forEach(function(c) {
+    c.disabled = true;
+    if (c.dataset.correct === 'true') c.classList.add('correct');
+    else if (c === picked && !isCorrect) c.classList.add('wrong');
+  });
+  var fb = document.getElementById('quizFeedback');
+  fb.className = 'quiz-feedback ' + (isCorrect ? 'good' : 'bad');
+  fb.textContent = isCorrect
+    ? 'Correct. Subtract 2x from both sides → x − 7 = 5. Add 7 → x = 12.'
+    : 'Not quite. Subtract 2x from both sides to get x − 7 = 5, then add 7.';
+  fb.style.display = 'block';
+  document.getElementById('checkBtn').style.display = 'none';
+  document.getElementById('practiceLink').style.display = 'block';
+}
+
+// ── Ask widget ───────────────────────────────────────────────────
+function submitAsk() {
+  var input = document.getElementById('askInput');
+  if (!input || !input.value.trim()) return;
+  var hint = document.getElementById('askHint');
+  hint.textContent = 'Got it — a tutor will respond shortly.';
+  input.value = '';
+  input.placeholder = 'Ask another question…';
+}
+</script>
 </body>
 </html>

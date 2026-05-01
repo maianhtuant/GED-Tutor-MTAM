@@ -31,7 +31,12 @@ import java.util.Locale;
 @Service
 public class MathAnswerChecker {
 
-    private static final double ABSOLUTE_FLOOR = 1e-4;
+    /**
+     * Absolute tolerance floor used when relative tolerance would be too tight.
+     * Set to 0.005 so that a correctly-rounded 2-decimal-place answer is always
+     * accepted (e.g. student types -0.67 for exact answer -2/3 ≈ -0.6667).
+     */
+    private static final double ABSOLUTE_FLOOR = 0.005;
 
     public MathAnswerResult check(GeneratedMathProblem problem, String rawInput) {
         String submitted = rawInput == null ? "" : rawInput.trim();
@@ -73,6 +78,12 @@ public class MathAnswerChecker {
         }
 
         int needed = problem.expectedAnswerCount();
+        if (needed == 0) {
+            // Template has no answer formula — cannot grade automatically.
+            return MathAnswerResult.incorrect(
+                    "This problem isn't configured for auto-grading yet.",
+                    "(no answer key)", submitted);
+        }
         if (parsed.size() != needed) {
             return MathAnswerResult.incorrect(
                     countHint(problem.shape(), needed),
@@ -101,15 +112,30 @@ public class MathAnswerChecker {
         if (p.hasSpecialAnswer()) return p.specialAnswer();
         if (p.expectedAnswers().isEmpty()) return "(empty)";
         if (p.shape() == AnswerShape.ORDERED && p.expectedAnswers().size() == 2) {
-            return "(" + p.expectedAnswers().get(0) + ", " + p.expectedAnswers().get(1) + ")";
+            return "(" + displayRational(p.expectedAnswers().get(0))
+                    + ", " + displayRational(p.expectedAnswers().get(1)) + ")";
         }
-        if (p.expectedAnswers().size() == 1) return p.expectedAnswers().get(0).toString();
+        if (p.expectedAnswers().size() == 1) return displayRational(p.expectedAnswers().get(0));
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < p.expectedAnswers().size(); i++) {
             if (i > 0) sb.append(p.shape() == AnswerShape.UNORDERED ? " or " : ", ");
-            sb.append(p.expectedAnswers().get(i));
+            sb.append(displayRational(p.expectedAnswers().get(i)));
         }
         return sb.toString();
+    }
+
+    /**
+     * Display a rational answer in a student-friendly way.
+     * Integers show as plain numbers; fractions show as "n/d ≈ 0.67"
+     * so students know which decimal to enter.
+     */
+    static String displayRational(Rational r) {
+        if (r.isInteger()) return r.toString();
+        // Large denominators come from irrational approximations — already a decimal string.
+        if (r.denominator() > 1000) return r.toString();
+        // Show fraction + rounded decimal so student knows both forms are accepted.
+        String decimal = String.format("%.2f", r.toDouble());
+        return r + " ≈ " + decimal;
     }
 
     private static String countHint(AnswerShape shape, int needed) {

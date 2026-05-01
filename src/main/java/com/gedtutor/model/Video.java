@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
+import com.gedtutor.model.MathProblemTemplate;
 
 @Entity
 @Table(name = "videos")
@@ -49,6 +50,15 @@ public class Video {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private VideoVisibility visibility;
+
+    /**
+     * Optional math practice template shown in the sidebar on the video detail page.
+     * When set, the sidebar displays this template's label and links to
+     * /practice/math/{template.id} for a live problem.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "math_template_id")
+    private MathProblemTemplate mathTemplate;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "uploaded_by")
@@ -100,6 +110,9 @@ public class Video {
 
     public VideoVisibility getVisibility() { return visibility; }
     public void setVisibility(VideoVisibility visibility) { this.visibility = visibility; }
+
+    public MathProblemTemplate getMathTemplate() { return mathTemplate; }
+    public void setMathTemplate(MathProblemTemplate mathTemplate) { this.mathTemplate = mathTemplate; }
 
     public User getUploadedBy() { return uploadedBy; }
     public void setUploadedBy(User uploadedBy) { this.uploadedBy = uploadedBy; }

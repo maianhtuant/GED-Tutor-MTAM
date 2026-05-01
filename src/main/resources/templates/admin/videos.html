@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Manage Videos')}"></head>
+<head th:replace="~{fragments/layout :: head('Manage Lessons')}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container">
     <div class="page-head">
-        <h1>Videos</h1>
+        <h1>Lessons</h1>
         <div>
             <form th:action="@{/admin/videos/all-private}" method="post" style="display:inline"
-                  onsubmit="return confirm('Set every video to PRIVATE?');">
+                  onsubmit="return confirm('Set every lesson to PRIVATE?');">
                 <button type="submit" class="btn">Set all private</button>
             </form>
-            <a th:href="@{/admin/videos/new}" class="btn btn-primary">+ New video</a>
+            <a th:href="@{/admin/videos/new}" class="btn btn-primary">+ New lesson</a>
         </div>
     </div>
 
@@ -42,7 +42,7 @@
             <td>
                 <a th:href="@{|/admin/videos/${v.id}/edit|}" class="btn">Edit</a>
                 <form th:action="@{|/admin/videos/${v.id}/delete|}" method="post" style="display:inline"
-                      onsubmit="return confirm('Delete this video?');">
+                      onsubmit="return confirm('Delete this lesson?');">
                     <button type="submit" class="btn btn-danger">Delete</button>
                 </form>
             </td>

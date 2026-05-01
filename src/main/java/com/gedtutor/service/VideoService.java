@@ -1,11 +1,13 @@
 package com.gedtutor.service;
 
 import com.gedtutor.dto.VideoForm;
+import com.gedtutor.model.MathProblemTemplate;
 import com.gedtutor.model.Subject;
 import com.gedtutor.model.User;
 import com.gedtutor.model.Video;
 import com.gedtutor.model.VideoVisibility;
 import com.gedtutor.repository.HomeworkRepository;
+import com.gedtutor.repository.MathProblemTemplateRepository;
 import com.gedtutor.repository.VideoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,15 +21,18 @@ public class VideoService {
     private final VideoUrlParser urlParser;
     private final SubjectService subjectService;
     private final HomeworkRepository homeworkRepository;
+    private final MathProblemTemplateRepository mathTemplateRepository;
 
     public VideoService(VideoRepository videoRepository,
                         VideoUrlParser urlParser,
                         SubjectService subjectService,
-                        HomeworkRepository homeworkRepository) {
+                        HomeworkRepository homeworkRepository,
+                        MathProblemTemplateRepository mathTemplateRepository) {
         this.videoRepository = videoRepository;
         this.urlParser = urlParser;
         this.subjectService = subjectService;
         this.homeworkRepository = homeworkRepository;
+        this.mathTemplateRepository = mathTemplateRepository;
     }
 
     public List<Video> listPublic() {
@@ -49,6 +54,12 @@ public class VideoService {
                 .orElseThrow(() -> new IllegalArgumentException("Video not found: " + id));
     }
 
+    /** Like findById but also eagerly loads the mathTemplate association. */
+    public Video findByIdWithTemplate(Long id) {
+        return videoRepository.findByIdWithTemplate(id)
+                .orElseThrow(() -> new IllegalArgumentException("Video not found: " + id));
+    }
+
     @Transactional
     public Video create(VideoForm form, User uploader) {
         VideoUrlParser.Parsed parsed = urlParser.parse(form.getVideoUrl());
@@ -62,6 +73,9 @@ public class VideoService {
         v.setCategory(form.getCategory() != null && !form.getCategory().isBlank() ? form.getCategory().trim() : null);
         v.setVisibility(form.getVisibility());
         v.setUploadedBy(uploader);
+        v.setMathTemplate(form.getMathTemplateId() != null
+                ? mathTemplateRepository.findById(form.getMathTemplateId()).orElse(null)
+                : null);
         return videoRepository.save(v);
     }
 
@@ -79,6 +93,9 @@ public class VideoService {
         v.setSubject(subjectService.findById(form.getSubjectId()));
         v.setCategory(form.getCategory() != null && !form.getCategory().isBlank() ? form.getCategory().trim() : null);
         v.setVisibility(form.getVisibility());
+        v.setMathTemplate(form.getMathTemplateId() != null
+                ? mathTemplateRepository.findById(form.getMathTemplateId()).orElse(null)
+                : null);
         return videoRepository.save(v);
     }
 

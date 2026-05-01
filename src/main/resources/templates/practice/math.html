@@ -56,7 +56,7 @@
 
   <div th:classappend="${result != null} ? (${result.correct} ? ' correct' : ' incorrect') : ''" class="practice-card">
 
-    <p class="question-text" style="white-space: pre-wrap;" th:text="${problem.questionText}">Solve for x: 2x^2 + 3x - 5 = 0</p>
+    <p class="question-text" th:attr="data-latex=${problem.questionText}"></p>
 
     <p class="hint" th:if="${problem.shape.name() == 'SCALAR' and !problem.hasSpecialAnswer()}">
       One answer. Decimals or fractions are fine: <code>2.5</code> or <code>5/2</code>.
@@ -89,7 +89,7 @@
       <strong th:text="${result.correct} ? 'Correct!' : 'Not quite.'">Correct!</strong>
       <span th:text="' ' + ${result.message}"></span>
       <div th:if="${!result.correct}" style="margin-top:0.4rem;">
-        Expected: <strong th:text="${result.expected}">x = 1 or x = -2</strong>
+        Expected: <strong><span th:attr="data-latex=${result.expected}"></span></strong>
       </div>
     </div>
 
@@ -102,5 +102,16 @@
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
+<script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script>
+  function renderLatex(el, latex) {
+    if (!latex || !window.katex) { el.textContent = latex || ''; return; }
+    try {
+      el.innerHTML = katex.renderToString(latex, { displayMode: true, throwOnError: false });
+    } catch(e) { el.textContent = latex; }
+  }
+  document.querySelectorAll('[data-latex]').forEach(el =>
+    renderLatex(el, el.getAttribute('data-latex')));
+</script>
 </body>
 </html>

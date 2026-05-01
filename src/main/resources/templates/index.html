@@ -1,27 +1,189 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('GED Tutor - Home')}"></head>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('GED Tutor — Study for Your GED')}"></head>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
-<main class="container hero">
-    <h1>Pass Your GED with Confidence</h1>
-    <p class="lead">Watch bite-sized video lessons across Math, Science, Social Studies, and Language Arts, then practice with homework assignments.</p>
-    <div class="cta">
-        <a th:href="@{/videos}" class="btn btn-primary">Browse Videos</a>
-        <a th:href="@{/register}" class="btn"
-           xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
-           sec:authorize="!isAuthenticated()">Create a free account</a>
+<main class="page">
+
+    <!-- ── Hero ─────────────────────────────────────────────────── -->
+    <section class="hero">
+        <div class="hero-meta mono">
+            <span>GED Prep · 2026</span>
+            <span class="dot-sep">•</span>
+            <span>Math · Science · Social Studies · Language Arts</span>
+        </div>
+
+        <h1 class="hero-title">
+            Pass your GED,<br>
+            <em>one lesson</em> at a time.
+        </h1>
+
+        <p class="hero-lede">
+            Lessons and adaptive practice problems across all four GED subjects.
+            Study at your own pace — fifteen minutes a day is enough to make real progress.
+        </p>
+
+        <div class="hero-cta">
+            <a th:href="@{/register}" class="btn btn-primary lg"
+               sec:authorize="!isAuthenticated()">Start free ›</a>
+            <a th:href="@{/videos}" class="btn lg">Browse lessons</a>
+            <a th:href="@{/practice}" class="btn lg"
+               sec:authorize="isAuthenticated()">Start practice ›</a>
+        </div>
+
+        <!-- Floating preview cards -->
+        <div class="hero-figure" aria-hidden="true">
+            <!-- Card 1: practice question -->
+            <div class="hf-card hf-1">
+                <div class="hf-hd mono"><span>Math · Algebra</span><span>Q 3 of 10</span></div>
+                <div class="hf-eq">3x + 7 = 22</div>
+                <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+                    <span style="padding:5px 12px;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;font-size:12px;font-family:var(--mono);">x = 3</span>
+                    <span style="padding:5px 12px;background:var(--accent-soft);border:1px solid var(--accent-line);border-radius:999px;font-size:12px;font-family:var(--mono);color:var(--accent-ink);">x = 5 ✓</span>
+                    <span style="padding:5px 12px;background:var(--paper-2);border:1px solid var(--line);border-radius:999px;font-size:12px;font-family:var(--mono);">x = 7</span>
+                </div>
+                <div class="hf-sub mono">Solve for x</div>
+            </div>
+
+            <!-- Card 2: progress tracker -->
+            <div class="hf-card hf-2">
+                <div class="hf-progress">
+                    <div class="hf-bar"><span style="width:68%;"></span></div>
+                    <div class="mono" style="font-size:11px;color:var(--ink-3);">68% · Unit 03 · Linear Equations</div>
+                </div>
+                <div class="hf-list">
+                    <div class="hf-li done">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                        Order of Operations
+                    </div>
+                    <div class="hf-li done">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                        Fractions &amp; Decimals
+                    </div>
+                    <div class="hf-li now">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="4"/></svg>
+                        Linear Equations
+                    </div>
+                    <div class="hf-li" style="opacity:.5;">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="1.5"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>
+                        Quadratic Equations
+                    </div>
+                </div>
+            </div>
+
+            <!-- Card 3: quick check (dark) -->
+            <div class="hf-card hf-3">
+                <div class="hf-quiz-q mono">quick check</div>
+                <div style="margin:10px 0;font-size:15px;color:oklch(0.88 0.01 80);">What is 15% of 240?</div>
+                <div class="hf-answer-ok">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12.5l4.5 4.5L19 7"/></svg>
+                    36 — correct
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- ── Stat strip ─────────────────────────────────────────────── -->
+    <div class="strip">
+        <div class="strip-stat"><span class="big mono">200+</span><span class="small">lessons</span></div>
+        <div class="strip-stat"><span class="big mono">1,000+</span><span class="small">practice problems</span></div>
+        <div class="strip-stat"><span class="big mono">15 min</span><span class="small">avg daily session</span></div>
+        <div class="strip-stat"><span class="big mono">$0</span><span class="small">to start · no card</span></div>
     </div>
 
-    <section class="subjects">
-        <div class="subject-card"><h3>Math</h3><p>Algebra, geometry, data analysis.</p></div>
-        <div class="subject-card"><h3>Science</h3><p>Life, physical &amp; earth science.</p></div>
-        <div class="subject-card"><h3>Social Studies</h3><p>US history, civics, geography.</p></div>
-        <div class="subject-card"><h3>Language Arts</h3><p>Reading, writing, grammar.</p></div>
+    <!-- ── Subjects ───────────────────────────────────────────────── -->
+    <section>
+        <header class="sec-hd">
+            <span class="kicker mono">What you'll study</span>
+            <h2>Four subjects. One exam.</h2>
+            <p class="sec-lede">
+                Every GED subject in one place — from arithmetic and algebra to
+                reading comprehension and US history. <em>Lessons tie directly to what the test covers.</em>
+            </p>
+        </header>
+
+        <div class="subj-grid">
+            <article class="subj">
+                <div class="subj-num mono">SUBJECT 01</div>
+                <h3>Math</h3>
+                <div class="subj-meta mono">Algebra, geometry, data analysis, quadratics</div>
+                <div class="striped"><span class="mono" style="font-size:10px;">math · 80 lessons</span></div>
+                <a th:href="@{/videos}" class="btn btn-sm" style="width:fit-content;margin-top:4px;">Browse lessons ›</a>
+            </article>
+            <article class="subj">
+                <div class="subj-num mono">SUBJECT 02</div>
+                <h3>Science</h3>
+                <div class="subj-meta mono">Life, physical &amp; earth science</div>
+                <div class="striped" style="--accent-soft:oklch(0.45 0.06 200 / .14);"><span class="mono" style="font-size:10px;">science · 60 lessons</span></div>
+                <a th:href="@{/videos}" class="btn btn-sm" style="width:fit-content;margin-top:4px;">Browse lessons ›</a>
+            </article>
+            <article class="subj">
+                <div class="subj-num mono">SUBJECT 03</div>
+                <h3>Social Studies</h3>
+                <div class="subj-meta mono">US history, civics, economics, geography</div>
+                <div class="striped" style="--accent-soft:oklch(0.22 0.025 70 / .12);"><span class="mono" style="font-size:10px;">social studies · 50 lessons</span></div>
+                <a th:href="@{/videos}" class="btn btn-sm" style="width:fit-content;margin-top:4px;">Browse lessons ›</a>
+            </article>
+            <article class="subj">
+                <div class="subj-num mono">SUBJECT 04</div>
+                <h3>Language Arts</h3>
+                <div class="subj-meta mono">Reading, writing, grammar, extended response</div>
+                <div class="striped" style="--accent-soft:hsl(320 35% 38% / .12);"><span class="mono" style="font-size:10px;">language arts · 45 lessons</span></div>
+                <a th:href="@{/videos}" class="btn btn-sm" style="width:fit-content;margin-top:4px;">Browse lessons ›</a>
+            </article>
+        </div>
     </section>
+
+    <!-- ── How it works ───────────────────────────────────────────── -->
+    <section>
+        <header class="sec-hd">
+            <span class="kicker mono">How it works</span>
+            <h2>Watch. Practice. Track.</h2>
+        </header>
+        <ol class="how-steps">
+            <li>
+                <span class="step-n mono">01</span>
+                <h4>Watch a short video lesson</h4>
+                <p>Each lesson is 5–12 minutes — clear explanations with worked examples, focused on exactly what the GED tests.</p>
+            </li>
+            <li>
+                <span class="step-n mono">02</span>
+                <h4>Practice with real problems</h4>
+                <p>After each lesson, solve problems that adapt to what you got right and wrong. <em>Immediate feedback tells you why, not just what.</em></p>
+            </li>
+            <li>
+                <span class="step-n mono">03</span>
+                <h4>Track your progress</h4>
+                <p>Your dashboard shows exactly which topics you've mastered and which need more work — so you study smarter, not longer.</p>
+            </li>
+        </ol>
+    </section>
+
+    <!-- ── Testimonial ────────────────────────────────────────────── -->
+    <section class="testimonial">
+        <blockquote>
+            <span class="quote-mark">"</span>
+            I failed the math section twice. Two months with this site and I passed with
+            a 172. The practice problems are exactly like the real test.
+        </blockquote>
+        <div class="quote-attr mono">— Marcus T. · GED Math · passed 2025</div>
+    </section>
+
+    <!-- ── CTA band ───────────────────────────────────────────────── -->
+    <section class="cta-band" sec:authorize="!isAuthenticated()">
+        <div>
+            <h2>Start studying today.</h2>
+            <p>Free forever. No credit card. Just open your first lesson.</p>
+        </div>
+        <a th:href="@{/register}" class="btn btn-primary lg">Create free account ›</a>
+    </section>
+
 </main>
 
-<footer th:replace="~{fragments/layout :: footer}"></footer>
+<footer class="footer">
+    <p style="color:var(--ink-3);font-size:12px;">&copy; GED Tutor &mdash; study for your GED with lessons &amp; practice problems.</p>
+</footer>
 </body>
 </html>
