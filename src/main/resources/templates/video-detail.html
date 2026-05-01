@@ -55,7 +55,7 @@
       <!-- Notes panel -->
       <div id="notes" class="tab-content">
         <article class="notes" th:if="${video.description}">
-          <p th:text="${video.description}"></p>
+          <p th:text="${video.description}" style="white-space: pre-wrap;"></p>
         </article>
         <article class="notes" th:unless="${video.description}">
           <p class="muted">No notes for this lesson yet.</p>
