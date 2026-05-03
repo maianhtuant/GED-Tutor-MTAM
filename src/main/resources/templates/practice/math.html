@@ -18,6 +18,12 @@
     margin: 0 0 1rem 0;
     font-family: "Cambria", "Times New Roman", serif;
   }
+  .math-expr {
+    margin: 0.6rem 0 0.25rem;
+    text-align: center;
+  }
+  .math-expr .katex-display { margin: 0; }
+  .math-inline .katex { font-size: 1.1em; }
   .hint {
     color: #666;
     font-size: 0.9rem;
@@ -102,16 +108,95 @@
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script>
-  function renderLatex(el, latex) {
-    if (!latex || !window.katex) { el.textContent = latex || ''; return; }
-    try {
-      el.innerHTML = katex.renderToString(latex, { displayMode: true, throwOnError: false });
-    } catch(e) { el.textContent = latex; }
+  /* Smart math rendering — only render parts of the question that are
+     actually math; leave plain prose as text. Mirrors practice/set-run.html. */
+
+  function escHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   }
-  document.querySelectorAll('[data-latex]').forEach(el =>
-    renderLatex(el, el.getAttribute('data-latex')));
+
+  function toLatex(s) {
+    return s
+      .replace(/(-?\d+)\/(-?\d+|x)/g, '\\frac{$1}{$2}')
+      .replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}')
+      .replace(/\*/g, ' \\cdot ');
+  }
+
+  function isPureMathExpr(s) {
+    if (/[,?]/.test(s)) return false;
+    return /\^/.test(s) || (/=/.test(s) && /[xy]/.test(s));
+  }
+
+  function renderQuestion(el) {
+    var raw = el.getAttribute('data-latex') || '';
+
+    if (raw.indexOf('\\') !== -1) {
+      try { el.innerHTML = katex.renderToString(raw, { displayMode: true, throwOnError: false }); }
+      catch(e) { el.textContent = raw; }
+      return;
+    }
+
+    var newlineIdx = raw.indexOf('\n');
+    if (newlineIdx !== -1) {
+      var label = raw.substring(0, newlineIdx).trim();
+      var lines = raw.substring(newlineIdx + 1)
+        .split('\n').map(function(l){ return l.trim(); }).filter(function(l){ return l.length > 0; });
+      var mathStr = lines.length === 1
+        ? toLatex(lines[0])
+        : '\\begin{cases} ' + lines.map(toLatex).join(' \\\\ ') + ' \\end{cases}';
+      try {
+        el.innerHTML = '<span>' + escHtml(label) + '</span>' +
+          '<div class="math-expr">' +
+            katex.renderToString(mathStr, { displayMode: true, throwOnError: false }) +
+          '</div>';
+      } catch(e) { el.textContent = raw; }
+      return;
+    }
+
+    var funcMatch = raw.match(/^(Given f\(x\) = )([^,]+)(, what is .+)$/);
+    if (funcMatch) {
+      try {
+        el.innerHTML =
+          escHtml(funcMatch[1]) +
+          '<span class="math-inline">' +
+            katex.renderToString(toLatex(funcMatch[2]), { displayMode: false, throwOnError: false }) +
+          '</span>' +
+          escHtml(funcMatch[3]);
+      } catch(e) { el.textContent = raw; }
+      return;
+    }
+
+    var colonIdx = raw.indexOf(': ');
+    if (colonIdx !== -1) {
+      var lbl  = raw.substring(0, colonIdx);
+      var expr = raw.substring(colonIdx + 2).trim();
+      if (isPureMathExpr(expr)) {
+        try {
+          el.innerHTML = '<span>' + escHtml(lbl) + ':</span>' +
+            '<div class="math-expr">' +
+              katex.renderToString(toLatex(expr), { displayMode: true, throwOnError: false }) +
+            '</div>';
+        } catch(e) { el.textContent = raw; }
+        return;
+      }
+    }
+
+    if (isPureMathExpr(raw)) {
+      try {
+        el.innerHTML = '<div class="math-expr">' +
+          katex.renderToString(toLatex(raw), { displayMode: true, throwOnError: false }) +
+          '</div>';
+      } catch(e) { el.textContent = raw; }
+      return;
+    }
+
+    el.textContent = raw;
+  }
+
+  document.querySelectorAll('[data-latex]').forEach(renderQuestion);
 </script>
 </body>
 </html>

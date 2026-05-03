@@ -13,6 +13,12 @@
     white-space: pre-wrap;
     font-family: "Cambria", "Times New Roman", serif;
   }
+  .math-expr {
+    margin: 0.6rem 0 0.25rem;
+    text-align: center;
+  }
+  .math-expr .katex-display { margin: 0; }
+  .math-inline .katex { font-size: 1.1em; }
   .qmeta { color:#888; font-size:0.9rem; margin-bottom: 0.5rem; }
   .badge-type {
     background:#6c757d; color:#fff; padding:0.2rem 0.5rem;
@@ -120,9 +126,10 @@
   }
 
   function renderLatex(el, latex) {
+    // Used for the "Expected: …" answer span — short LaTeX strings only.
     if (!latex || !window.katex) { el.textContent = latex || ''; return; }
     try {
-      el.innerHTML = katex.renderToString(latex, { displayMode: true, throwOnError: false });
+      el.innerHTML = katex.renderToString(latex, { displayMode: false, throwOnError: false });
     } catch(e) {
       el.textContent = latex;
     }
@@ -192,13 +199,6 @@
       .catch(err => console.error('completeAttempt failed:', err));
   }
 
-  // renderMathQuestions() is called after the KaTeX <script> tag below loads.
-  function renderMathQuestions() {
-    document.querySelectorAll('.question-text[data-latex]').forEach(el => {
-      renderLatex(el, el.getAttribute('data-latex'));
-    });
-  }
-
   document.querySelectorAll('.answer-submit').forEach(btn => {
     btn.addEventListener('click', () =>
       submitAnswer(parseInt(btn.getAttribute('data-qidx'), 10)));
@@ -212,9 +212,114 @@
     });
   });
 </script>
-<!-- KaTeX JS loaded synchronously. Once the parser reaches the next line,
-     window.katex is defined and we can call renderMathQuestions() immediately. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script>renderMathQuestions();</script>
+<script>
+  /* ── KaTeX math rendering ──────────────────────────────────────────────────
+     Keep these helpers in a plain <script> (no th:inline) so Thymeleaf's
+     JavaScript-inline mode cannot mangle backslashes in regex literals.
+     Mirrors practice/set-run.html — only parts of a question that are
+     actually math get rendered as LaTeX; plain prose is left as text.        */
+
+  function escHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  // Convert plain math notation → LaTeX understood by KaTeX
+  function toLatex(s) {
+    return s
+      .replace(/(-?\d+)\/(-?\d+|x)/g, '\\frac{$1}{$2}')   // 3/4 → \frac{3}{4}
+      .replace(/sqrt\(([^)]+)\)/g, '\\sqrt{$1}')           // sqrt(x) → \sqrt{x}
+      .replace(/\*/g, ' \\cdot ');                          // * → ·
+  }
+
+  // True when a string is a pure math expression (no prose, no comma, no ?)
+  function isPureMathExpr(s) {
+    if (/[,?]/.test(s)) return false;
+    return /\^/.test(s) || (/=/.test(s) && /[xy]/.test(s));
+  }
+
+  function renderMathQuestions() {
+    document.querySelectorAll('.question-text[data-latex]').forEach(function(el) {
+      var raw = el.getAttribute('data-latex') || '';
+
+      // ── 0. Raw LaTeX (FREE_FORM templates) ──────────────────────────────
+      if (raw.indexOf('\\') !== -1) {
+        try {
+          el.innerHTML = katex.renderToString(raw, { displayMode: true, throwOnError: false });
+        } catch(e) { el.textContent = raw; }
+        return;
+      }
+
+      var newlineIdx = raw.indexOf('\n');
+
+      // ── 1. Multi-line → system of equations ─────────────────────────────
+      if (newlineIdx !== -1) {
+        var label = raw.substring(0, newlineIdx).trim();
+        var lines = raw.substring(newlineIdx + 1)
+          .split('\n').map(function(l) { return l.trim(); }).filter(function(l) { return l.length > 0; });
+        var mathStr = lines.length === 1
+          ? toLatex(lines[0])
+          : '\\begin{cases} ' + lines.map(toLatex).join(' \\\\ ') + ' \\end{cases}';
+        try {
+          el.innerHTML =
+            '<span>' + escHtml(label) + '</span>' +
+            '<div class="math-expr">' +
+              katex.renderToString(mathStr, { displayMode: true, throwOnError: false }) +
+            '</div>';
+        } catch(e) { el.textContent = raw; }
+        return;
+      }
+
+      // ── 2. Function evaluation ──────────────────────────────────────────
+      // "Given f(x) = 3x + 5, what is f(2)?"
+      var funcMatch = raw.match(/^(Given f\(x\) = )([^,]+)(, what is .+)$/);
+      if (funcMatch) {
+        try {
+          el.innerHTML =
+            escHtml(funcMatch[1]) +
+            '<span class="math-inline">' +
+              katex.renderToString(toLatex(funcMatch[2]), { displayMode: false, throwOnError: false }) +
+            '</span>' +
+            escHtml(funcMatch[3]);
+        } catch(e) { el.textContent = raw; }
+        return;
+      }
+
+      // ── 3. "Label: PURE_MATH_EXPR" ──────────────────────────────────────
+      var colonIdx = raw.indexOf(': ');
+      if (colonIdx !== -1) {
+        var lbl  = raw.substring(0, colonIdx);
+        var expr = raw.substring(colonIdx + 2).trim();
+        if (isPureMathExpr(expr)) {
+          try {
+            el.innerHTML =
+              '<span>' + escHtml(lbl) + ':</span>' +
+              '<div class="math-expr">' +
+                katex.renderToString(toLatex(expr), { displayMode: true, throwOnError: false }) +
+              '</div>';
+          } catch(e) { el.textContent = raw; }
+          return;
+        }
+      }
+
+      // ── 3b. Bare math expression (no label prefix) ──────────────────────
+      if (isPureMathExpr(raw)) {
+        try {
+          el.innerHTML =
+            '<div class="math-expr">' +
+              katex.renderToString(toLatex(raw), { displayMode: true, throwOnError: false }) +
+            '</div>';
+        } catch(e) { el.textContent = raw; }
+        return;
+      }
+
+      // ── 4. Fallback: plain word problem ─────────────────────────────────
+      el.textContent = raw;
+    });
+  }
+
+  renderMathQuestions();
+</script>
 </body>
 </html>
