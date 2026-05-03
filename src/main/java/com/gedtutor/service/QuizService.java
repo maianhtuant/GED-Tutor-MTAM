@@ -213,6 +213,20 @@ public class QuizService {
                 .orElseThrow(() -> new IllegalArgumentException("Attempt not found: " + id));
     }
 
+    /**
+     * Returns true when the given attempt belongs to a math-quiz homework.
+     * Runs inside a transaction so the lazy {@code QuizAttempt → Homework}
+     * proxy can be initialized — callers in unmanaged scopes (e.g. the
+     * controller layer with {@code spring.jpa.open-in-view=false}) must use
+     * this helper instead of touching {@code attempt.getHomework()} directly.
+     */
+    @Transactional(readOnly = true)
+    public boolean isMathAttempt(Long attemptId) {
+        QuizAttempt attempt = attemptRepo.findById(attemptId)
+                .orElseThrow(() -> new IllegalArgumentException("Attempt not found: " + attemptId));
+        return attempt.getHomework() != null && attempt.getHomework().isMathQuiz();
+    }
+
     @Transactional
     public boolean submitAnswer(Long attemptId, Long questionId, String studentAnswer) {
         QuizAttempt attempt = attemptRepo.findById(attemptId)

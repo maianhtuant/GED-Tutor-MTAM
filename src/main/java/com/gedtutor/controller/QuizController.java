@@ -155,8 +155,11 @@ public class QuizController {
     @ResponseBody
     public ResponseEntity<Map<String, Object>> completeAttempt(@PathVariable Long attemptId,
                                                                HttpSession session) {
-        QuizAttempt attempt = quizService.findAttemptById(attemptId);
-        if (attempt.getHomework() != null && attempt.getHomework().isMathQuiz()) {
+        // Decide which service to dispatch to inside a transaction — touching
+        // attempt.getHomework() in this controller scope would throw
+        // LazyInitializationException (open-in-view=false).
+        QuizAttempt attempt;
+        if (quizService.isMathAttempt(attemptId)) {
             attempt = mathQuizService.completeAttempt(session, attemptId);
         } else {
             attempt = quizService.completeAttempt(attemptId);

@@ -47,6 +47,13 @@
     display: none;
   }
   .score-box h2 { color:#28a745; font-size:2rem; margin:0; }
+  .early-submit-row {
+    margin: 1.5rem 0 2rem 0; padding: 1rem 1.25rem;
+    background: #fff8e6; border: 1px solid #f1d68d; border-radius: 8px;
+    display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;
+  }
+  .early-submit-hint { margin: 0; color: #6b5300; font-size: 0.95rem; }
+  #earlySubmitBtn { align-self: flex-start; }
 </style>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
@@ -128,6 +135,19 @@
        class="video-link">
       Watch the lesson video for this kind of problem &rarr;
     </a>
+  </div>
+
+  <!-- Early-submit: jump to the summary page now, even if questions remain. -->
+  <div class="early-submit-row" th:unless="${state.isDone()}">
+    <p class="early-submit-hint">
+      Don't have time to finish right now? You can submit what you have so far —
+      unanswered questions will be skipped and won't count toward your score.
+    </p>
+    <button type="button" id="earlySubmitBtn"
+            class="btn btn-secondary"
+            th:attr="data-done-url=@{|/practice/sets/${set.id}/done|}">
+      Submit now
+    </button>
   </div>
 </main>
 
@@ -225,6 +245,22 @@
       }
     });
   });
+
+  // Early-submit button: jump to the summary page now even if questions
+  // remain. The session-side state already knows what's been answered, so
+  // we just navigate to /done — the unanswered ones simply don't count.
+  const earlyBtn = document.getElementById('earlySubmitBtn');
+  if (earlyBtn) {
+    earlyBtn.addEventListener('click', () => {
+      const remaining = totalQuestions - answered;
+      const msg = remaining > 0
+        ? 'Submit now? ' + remaining + ' question(s) are still unanswered and will be skipped.'
+        : 'Go to your summary?';
+      if (!confirm(msg)) return;
+      earlyBtn.disabled = true;
+      window.location.href = earlyBtn.getAttribute('data-done-url');
+    });
+  }
 
   setProgress();
 

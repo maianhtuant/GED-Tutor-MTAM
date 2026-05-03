@@ -43,6 +43,13 @@
     padding:2rem; text-align:center; margin:2rem 0; display:none;
   }
   .score-box h2 { color:#28a745; font-size:2.5rem; margin:0; }
+  .early-submit-row {
+    margin: 1.5rem 0 2rem 0; padding: 1rem 1.25rem;
+    background: #fff8e6; border: 1px solid #f1d68d; border-radius: 8px;
+    display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start;
+  }
+  .early-submit-hint { margin: 0; color: #6b5300; font-size: 0.95rem; }
+  #earlySubmitBtn { align-self: flex-start; }
 </style>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
@@ -100,6 +107,17 @@
       <strong class="feedback-label"></strong>
       <span class="feedback-answer"></span>
     </div>
+  </div>
+
+  <!-- Early-submit: finish the quiz now, even with unanswered questions. -->
+  <div class="early-submit-row">
+    <p class="early-submit-hint">
+      Don't have time to finish right now? You can submit what you have so far —
+      unanswered questions will count as incorrect.
+    </p>
+    <button type="button" id="earlySubmitBtn" class="btn btn-secondary">
+      Submit quiz now
+    </button>
   </div>
 </main>
 
@@ -185,16 +203,35 @@
     });
   }
 
+  function showScoreBox(score, total) {
+    document.getElementById('scoreText').textContent = score + ' / ' + total;
+    const box = document.getElementById('scoreBox');
+    box.style.display = 'block';
+    box.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+  }
+
   function finishQuiz() {
+    // Show the score immediately from local state — unanswered questions
+    // count as incorrect, so correctSoFar / totalQuestions is the true score
+    // whether the user finished normally or used "Submit quiz now".
+    showScoreBox(correctSoFar, totalQuestions);
+
+    // Then POST to /complete so the server records score + completedAt.
+    // The response can confirm the totals; if it returns sane numbers we
+    // refresh the display, otherwise we keep the locally-computed values.
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
     if (csrfToken) headers[csrfHeader] = csrfToken;
     fetch('/quiz/attempt/' + attemptId + '/complete', { method: 'POST', headers: headers })
-      .then(r => r.json())
+      .then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
       .then(data => {
-        document.getElementById('scoreText').textContent = data.score + ' / ' + data.total;
-        const box = document.getElementById('scoreBox');
-        box.style.display = 'block';
-        box.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+        const score = (typeof data.score === 'number') ? data.score : null;
+        const total = (typeof data.total === 'number' && data.total > 0) ? data.total : null;
+        if (score !== null && total !== null) {
+          showScoreBox(score, total);
+        }
       })
       .catch(err => console.error('completeAttempt failed:', err));
   }
@@ -211,6 +248,24 @@
       }
     });
   });
+
+  // Early-submit button: finish the quiz now even if questions remain.
+  // Auto-finish via setProgress() also calls finishQuiz(); the `completed`
+  // guard makes a duplicate POST a no-op.
+  const earlyBtn = document.getElementById('earlySubmitBtn');
+  if (earlyBtn) {
+    earlyBtn.addEventListener('click', () => {
+      if (completed) return;
+      const remaining = totalQuestions - answered;
+      const msg = remaining > 0
+        ? 'Submit now? ' + remaining + ' question(s) are still unanswered and will be marked incorrect.'
+        : 'Submit your quiz?';
+      if (!confirm(msg)) return;
+      earlyBtn.disabled = true;
+      completed = true;
+      finishQuiz();
+    });
+  }
 </script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
