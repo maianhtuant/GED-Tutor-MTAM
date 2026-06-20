@@ -53,7 +53,6 @@
     <table class="table" th:if="${!#lists.isEmpty(roots)}">
         <thead>
         <tr>
-            <th>Order</th>
             <th>Name</th>
             <th>Description</th>
             <th>Status</th>
@@ -66,7 +65,6 @@
             <!-- Parent row — clicking the name cell expands/collapses children -->
             <tr class="subject-parent"
                 th:attr="data-parent-id=${root.id}">
-                <td th:text="${root.displayOrder}">0</td>
                 <td class="parent-name-cell"
                     th:attr="data-toggle=${root.id}"
                     th:if="${!#lists.isEmpty(childMap[root.id])}">
@@ -105,7 +103,6 @@
                 th:each="child : ${childMap[root.id]}"
                 th:attr="data-child-of=${root.id}"
                 style="display:none">
-                <td th:text="${child.displayOrder}">0</td>
                 <td>
                     <div class="child-indent">
                         <span class="child-branch">└</span>
