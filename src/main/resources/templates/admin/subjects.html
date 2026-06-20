@@ -18,16 +18,36 @@
     </p>
 
     <style>
+        /* Parent rows */
         .subject-parent td { background: var(--surface, #fff); }
+        .subject-parent .toggle-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: .85rem;
+            color: #888;
+            padding: 0 .35rem 0 0;
+            line-height: 1;
+            transition: transform .15s;
+            display: inline-block;
+        }
+        .subject-parent .toggle-btn.open { transform: rotate(90deg); }
         .subject-parent .subject-name { font-weight: 600; }
-        .subject-child  td { background: var(--surface-alt, #fafafa); }
+        .subject-parent tr:hover .toggle-btn { color: #444; }
+
+        /* Child rows */
+        .subject-child td { background: var(--surface-alt, #fafafa); }
         .subject-child .child-indent {
             display: flex;
             align-items: center;
             gap: .4rem;
-            padding-left: 1.5rem;
+            padding-left: 1.75rem;
         }
-        .child-branch { color: #bbb; font-size: .9rem; flex-shrink: 0; }
+        .child-branch { color: #bbb; flex-shrink: 0; }
+
+        /* Clickable parent name cell */
+        .parent-name-cell { cursor: pointer; user-select: none; }
+        .parent-name-cell:hover .subject-name { text-decoration: underline; }
     </style>
 
     <table class="table" th:if="${!#lists.isEmpty(roots)}">
@@ -41,16 +61,26 @@
         </tr>
         </thead>
 
-        <!-- One <tbody> per root so borders visually group each family -->
         <tbody th:each="root : ${roots}">
 
-            <!-- Parent row -->
-            <tr class="subject-parent">
+            <!-- Parent row — clicking the name cell expands/collapses children -->
+            <tr class="subject-parent"
+                th:attr="data-parent-id=${root.id}">
                 <td th:text="${root.displayOrder}">0</td>
-                <td>
-                    <a class="subject-name"
-                       th:href="@{|/admin/subjects/${root.id}/edit|}"
-                       th:text="${root.name}">Name</a>
+                <td class="parent-name-cell"
+                    th:attr="data-toggle=${root.id}"
+                    th:if="${!#lists.isEmpty(childMap[root.id])}">
+                    <button type="button" class="toggle-btn" aria-label="Toggle children">&#9658;</button>
+                    <a th:href="@{|/admin/subjects/${root.id}/edit|}"
+                       th:text="${root.name}"
+                       class="subject-name"
+                       onclick="event.stopPropagation()">Name</a>
+                </td>
+                <!-- No children — plain link, no toggle button -->
+                <td th:unless="${!#lists.isEmpty(childMap[root.id])}">
+                    <a th:href="@{|/admin/subjects/${root.id}/edit|}"
+                       th:text="${root.name}"
+                       class="subject-name">Name</a>
                 </td>
                 <td class="muted" th:text="${root.description != null ? root.description : '—'}">—</td>
                 <td>
@@ -70,8 +100,11 @@
                 </td>
             </tr>
 
-            <!-- Child rows (indented under parent) -->
-            <tr class="subject-child" th:each="child : ${childMap[root.id]}">
+            <!-- Child rows — hidden by default, revealed on parent click -->
+            <tr class="subject-child"
+                th:each="child : ${childMap[root.id]}"
+                th:attr="data-child-of=${root.id}"
+                style="display:none">
                 <td th:text="${child.displayOrder}">0</td>
                 <td>
                     <div class="child-indent">
@@ -108,5 +141,24 @@
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script th:attr="nonce=${_cspNonce}">
+(function () {
+    // Click the name cell (or the arrow button) to expand / collapse children
+    document.querySelectorAll('[data-toggle]').forEach(function (cell) {
+        cell.addEventListener('click', function () {
+            var parentId = cell.getAttribute('data-toggle');
+            var btn      = cell.querySelector('.toggle-btn');
+            var children = document.querySelectorAll('[data-child-of="' + parentId + '"]');
+            var isOpen   = btn.classList.contains('open');
+
+            children.forEach(function (row) {
+                row.style.display = isOpen ? 'none' : '';
+            });
+            btn.classList.toggle('open', !isOpen);
+        });
+    });
+})();
+</script>
 </body>
 </html>
