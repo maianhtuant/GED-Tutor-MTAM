@@ -5,3 +5,8 @@ target/
 *.log
 .DS_Store
 HELP.md
+
+# Environment / secrets — never commit these
+.env
+*.env
+application-local.properties

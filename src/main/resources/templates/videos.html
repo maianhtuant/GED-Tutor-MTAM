@@ -254,27 +254,38 @@
         try { sessionStorage.setItem('videosChildTab_' + parentId, childId); } catch(_) {}
     }
 
+    /** Creates a pill button safely — no innerHTML, so subject names can't inject markup. */
+    function makeChildBtn(label, count) {
+        const btn  = document.createElement('button');
+        const text = document.createTextNode(label + ' ');
+        const badge = document.createElement('span');
+        badge.className = 'count';
+        badge.textContent = count;
+        btn.appendChild(text);
+        btn.appendChild(badge);
+        return btn;
+    }
+
     function buildChildBar(parentId) {
         const children = childMap[parentId];
-        childTabBar.innerHTML = '';
+        // Clear safely — no innerHTML
+        while (childTabBar.firstChild) childTabBar.removeChild(childTabBar.firstChild);
         if (!children || children.length === 0) {
             childTabBar.style.display = 'none';
             return;
         }
 
         // "All" button shows parent's own content (if any) + no child selected
-        const allBtn = document.createElement('button');
+        const allBtn = makeChildBtn('All', (typeof VIDEO_COUNT !== 'undefined' && VIDEO_COUNT[parentId]) || 0);
         allBtn.className = 'pill-tab pill-tab--child';
         allBtn.dataset.childId = '';
-        allBtn.innerHTML = 'All <span class="count">' + ((typeof VIDEO_COUNT !== 'undefined' && VIDEO_COUNT[parentId]) || 0) + '</span>';
         allBtn.addEventListener('click', () => activateChild(parentId, ''));
         childTabBar.appendChild(allBtn);
 
         children.forEach(c => {
-            const btn = document.createElement('button');
+            const btn = makeChildBtn(c.name, c.count);
             btn.className = 'pill-tab pill-tab--child';
             btn.dataset.childId = c.id;
-            btn.innerHTML = c.name + ' <span class="count">' + c.count + '</span>';
             btn.addEventListener('click', () => activateChild(parentId, c.id));
             childTabBar.appendChild(btn);
         });
@@ -296,7 +307,7 @@
         // child sub-tab bar
         if (tabId === 'all' || !tabId.startsWith('tab-')) {
             childTabBar.style.display = 'none';
-            childTabBar.innerHTML = '';
+            while (childTabBar.firstChild) childTabBar.removeChild(childTabBar.firstChild);
             activeParent = null;
         } else {
             const parentId = tabId.replace('tab-', '');

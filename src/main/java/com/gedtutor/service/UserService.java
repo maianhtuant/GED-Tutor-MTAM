@@ -73,6 +73,7 @@ public class UserService {
 
     @Transactional
     public void resetPassword(Long id, String newPassword) {
+        validatePassword(newPassword);
         User u = findById(id);
         u.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(u);
@@ -81,6 +82,7 @@ public class UserService {
     @Transactional
     public User createUser(String username, String email, String fullName,
                            String password, Role role) {
+        validatePassword(password);
         if (userRepository.existsByUsername(username)) {
             throw new IllegalArgumentException("Username is already taken.");
         }
@@ -95,6 +97,13 @@ public class UserService {
         user.setRole(role != null ? role : Role.STUDENT);
         user.setEnabled(true);
         return userRepository.save(user);
+    }
+
+    /** Enforces minimum password policy server-side (bypasses HTML minlength). */
+    private void validatePassword(String password) {
+        if (password == null || password.length() < 8) {
+            throw new IllegalArgumentException("Password must be at least 8 characters.");
+        }
     }
 
     @Transactional
