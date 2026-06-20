@@ -87,7 +87,7 @@
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
-<script>
+<script th:attr="nonce=${_cspNonce}">
     const CATEGORIES = {
         'Math':          ['GED', 'Pre-Calculus', 'Calculus 1', 'Calculus 2', 'Calculus 3', 'Linear Algebra', 'Differential Equations', 'Statistics', 'Trigonometry'],
         'Science':       ['GED', 'Biology', 'Chemistry', 'Physics', 'Earth Science'],

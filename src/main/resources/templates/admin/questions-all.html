@@ -279,7 +279,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script>
+<script th:attr="nonce=${_cspNonce}">
     (function () {
         const csrfToken  = document.querySelector('meta[name="_csrf"]')?.content || '';
         const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';

@@ -105,13 +105,13 @@
   </template>
 
   <!--/* Template data serialised for JS — rendered once by Thymeleaf. */-->
-  <script th:if="${form.id == null}" th:inline="javascript">
+  <script th:if="${form.id == null}" th:inline="javascript" th:attr="nonce=${_cspNonce}">
     /*<![CDATA[*/
     const TMPL_DATA = /*[[${templates}]]*/ [];
     /*]]>*/
   </script>
 
-  <script th:if="${form.id == null}">
+  <script th:if="${form.id == null}" th:attr="nonce=${_cspNonce}">
     (function () {
       const container     = document.getElementById('starterItems');
       const tplEl         = document.getElementById('starterRowTemplate');
@@ -231,7 +231,7 @@
   </div>
 </main>
 
-<script th:if="${set != null}">
+<script th:if="${set != null}" th:attr="nonce=${_cspNonce}">
 (function () {
   const filterSel   = document.getElementById('addItemSubjectFilter');
   const templateSel = document.getElementById('addItemTemplate');

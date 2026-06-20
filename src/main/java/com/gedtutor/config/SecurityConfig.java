@@ -91,25 +91,15 @@ public class SecurityConfig {
                         .logoutSuccessUrl("/login?logout")
                         .permitAll()
                 )
-                // Security response headers
+                // Security response headers.
+                // Content-Security-Policy is set dynamically by CspNonceFilter (nonce per request).
+                // Spring Security still owns the other headers here.
                 .headers(h -> h
                         .frameOptions(f -> f.sameOrigin())
                         .contentTypeOptions(c -> {})           // X-Content-Type-Options: nosniff
                         .referrerPolicy(r -> r.policy(
                                 org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter
                                         .ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
-                        // Content-Security-Policy: tightened for a Thymeleaf + KaTeX app.
-                        // 'unsafe-inline' for style is required by KaTeX; remove if you switch to
-                        // a nonce-based approach later.
-                        .contentSecurityPolicy(csp -> csp.policyDirectives(
-                                "default-src 'self'; " +
-                                "script-src 'self' https://cdn.jsdelivr.net; " +
-                                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; " +
-                                "font-src 'self' https://cdn.jsdelivr.net; " +
-                                "img-src 'self' data:; " +
-                                "frame-ancestors 'self'; " +
-                                "object-src 'none';"
-                        ))
                 )
                 // Rate-limit brute-force login AND registration attempts before Spring Security processes them
                 .addFilterBefore(loginRateLimitFilter, UsernamePasswordAuthenticationFilter.class);

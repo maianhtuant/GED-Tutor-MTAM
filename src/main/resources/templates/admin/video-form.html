@@ -73,7 +73,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script>
+<script th:attr="nonce=${_cspNonce}">
     // Predefined category suggestions per subject name
     const CATEGORIES = {
         'Math': ['GED', 'Pre-Calculus', 'Calculus 1', 'Calculus 2', 'Calculus 3',

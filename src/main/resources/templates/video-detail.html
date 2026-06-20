@@ -184,7 +184,7 @@
 <!-- KaTeX JS — only loaded on the lesson detail page -->
 <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
-<script>
+<script th:attr="nonce=${_cspNonce}">
 // ── Tab switching ────────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(function(btn) {
   btn.addEventListener('click', function() {

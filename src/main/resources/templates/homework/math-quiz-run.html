@@ -99,7 +99,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script th:inline="javascript">
+<script th:inline="javascript" th:attr="nonce=${_cspNonce}">
   const attemptId      = /*[[${attempt.id}]]*/ 0;
   const totalQuestions = /*[[${state.totalQuestions()}]]*/ 0;
   let answered     = 0;
@@ -215,6 +215,6 @@
 <!-- KaTeX JS loaded synchronously. Once the parser reaches the next line,
      window.katex is defined and we can call renderMathQuestions() immediately. -->
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script>renderMathQuestions();</script>
+<script th:attr="nonce=${_cspNonce}">renderMathQuestions();</script>
 </body>
 </html>

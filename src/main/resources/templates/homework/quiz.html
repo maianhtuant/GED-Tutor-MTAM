@@ -189,7 +189,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script th:inline="javascript">
+<script th:inline="javascript" th:attr="nonce=${_cspNonce}">
     const totalQuestions = /*[[${#lists.size(questions)}]]*/ 0;
     let answered = 0;
 
@@ -363,6 +363,6 @@
     }
 </script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script>renderMathInQuiz();</script>
+<script th:attr="nonce=${_cspNonce}">renderMathInQuiz();</script>
 </body>
 </html>

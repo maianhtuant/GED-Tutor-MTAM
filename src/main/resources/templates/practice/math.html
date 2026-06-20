@@ -103,7 +103,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script>
+<script th:attr="nonce=${_cspNonce}">
   function renderLatex(el, latex) {
     if (!latex || !window.katex) { el.textContent = latex || ''; return; }
     try {

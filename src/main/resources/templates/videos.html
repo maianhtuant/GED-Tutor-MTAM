@@ -43,7 +43,7 @@
   </div>
 
   <!-- Child subject data for JS (plain maps — no JPA entities) -->
-  <script th:inline="javascript">
+  <script th:inline="javascript" th:attr="nonce=${_cspNonce}">
     const CHILDREN_BY_PARENT = /*[[${childrenForJs}]]*/ {};
     const VIDEO_COUNT = /*[[${videoCountBySubject}]]*/ {};
   </script>
@@ -209,7 +209,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script>
+<script th:attr="nonce=${_cspNonce}">
 (function () {
     const tabBar      = document.getElementById('tabBar');
     const childTabBar = document.getElementById('childTabBar');

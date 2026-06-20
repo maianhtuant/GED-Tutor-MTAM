@@ -133,7 +133,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script th:inline="javascript">
+<script th:inline="javascript" th:attr="nonce=${_cspNonce}">
   const setId           = /*[[${set.id}]]*/ 0;
   const totalQuestions  = /*[[${state.totalQuestions()}]]*/ 0;
   let answered          = /*[[${state.totalAsked()}]]*/ 0;
@@ -230,7 +230,7 @@
 
 </script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script>
+<script th:attr="nonce=${_cspNonce}">
   /* ── KaTeX math rendering ──────────────────────────────────────────────────
      Keep these helpers in a plain <script> (no th:inline) so Thymeleaf's
      JavaScript-inline mode cannot mangle backslashes in regex literals.     */
