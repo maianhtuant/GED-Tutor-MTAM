@@ -68,6 +68,19 @@ public record Rational(long numerator, long denominator) implements Serializable
         return numerator + "/" + denominator;
     }
 
+    /** Return this + other as a reduced Rational. */
+    public Rational add(Rational other) {
+        return Rational.of(
+                this.numerator * other.denominator + other.numerator * this.denominator,
+                this.denominator * other.denominator);
+    }
+
+    /** Return this * other as a reduced Rational. */
+    public Rational multiply(Rational other) {
+        return Rational.of(this.numerator * other.numerator,
+                           this.denominator * other.denominator);
+    }
+
     private static long gcd(long a, long b) {
         while (b != 0) {
             long t = b;

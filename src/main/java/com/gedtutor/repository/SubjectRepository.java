@@ -12,6 +12,12 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
 
     List<Subject> findByActiveTrueOrderByDisplayOrderAscNameAsc();
 
+    /** Root subjects only (no parent) — used for the top-level tab bar. */
+    List<Subject> findByParentIsNullAndActiveTrueOrderByDisplayOrderAscNameAsc();
+
+    /** Children of a given parent subject — used for the sub-tab row. */
+    List<Subject> findByParentOrderByDisplayOrderAscNameAsc(Subject parent);
+
     Optional<Subject> findByNameIgnoreCase(String name);
 
     boolean existsByNameIgnoreCase(String name);

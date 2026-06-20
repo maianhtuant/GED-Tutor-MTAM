@@ -64,18 +64,48 @@ public class DataSeeder {
             Subject languageArts  = ensureSubject(subjects, "Language Arts",  "Reading, writing, grammar, and composition", 4);
             ensureSubject(subjects, "ESL", "English as a Second Language support lessons", 5);
 
+            // --- GED Math child subject (children of "Math") ---
+            Subject gedMath = ensureSubject(subjects, "GED Math",
+                    "GED-level arithmetic, algebra, geometry, and data analysis", 2);
+            ensureParent(subjects, gedMath, math);
+
+            // Idempotently reassign any videos still on the "Math" parent to "GED Math"
+            videos.findBySubject(math).forEach(v -> {
+                v.setSubject(gedMath);
+                videos.save(v);
+            });
+
+            // --- College-level math subjects (children of "Math") ---
+            Subject cal1    = ensureSubject(subjects, "Calculus 1",
+                    "Limits, derivatives, and introductory integration", 10);
+            Subject cal2    = ensureSubject(subjects, "Calculus 2",
+                    "Integration techniques, series, and sequences", 11);
+            Subject cal3    = ensureSubject(subjects, "Calculus 3",
+                    "Multivariable calculus: partial derivatives, multiple integrals, vectors", 12);
+            Subject linAlg  = ensureSubject(subjects, "Linear Algebra",
+                    "Vectors, matrices, determinants, eigenvalues, and linear systems", 13);
+            Subject diffEq  = ensureSubject(subjects, "Differential Equations",
+                    "ODEs: separable, linear first- and second-order, and exponential models", 14);
+
+            // --- Wire parent-child relationships (idempotent) ---
+            ensureParent(subjects, cal1,   math);
+            ensureParent(subjects, cal2,   math);
+            ensureParent(subjects, cal3,   math);
+            ensureParent(subjects, linAlg, math);
+            ensureParent(subjects, diffEq, math);
+
             // --- Videos ---
             if (videos.count() == 0) {
                 saveVideo(videos, urlParser, admin,
                         "Intro to GED Math",
                         "Overview of the GED Math test and key topics.",
                         "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
-                        math, VideoVisibility.PUBLIC);
+                        gedMath, VideoVisibility.PUBLIC);
                 saveVideo(videos, urlParser, admin,
                         "Algebra Basics: Solving Linear Equations",
                         "Learn how to isolate variables step by step.",
                         "https://www.youtube.com/watch?v=NybHckSEQBI",
-                        math, VideoVisibility.PUBLIC);
+                        gedMath, VideoVisibility.PUBLIC);
                 saveVideo(videos, urlParser, admin,
                         "Reading Comprehension Strategies",
                         "Active reading techniques for the GED.",
@@ -123,6 +153,65 @@ public class DataSeeder {
                     "Volume", null, 1.0);
             ensureMathTemplate(mathTemplates, math, MathProblemKind.SURFACE_AREA,
                     "Surface area", null, 1.0);
+
+            // --- Calculus 1 templates ---
+            ensureMathTemplate(mathTemplates, cal1, MathProblemKind.LIMIT_POLYNOMIAL,
+                    "Limit of a polynomial (direct substitution)", null, 0.5);
+            ensureMathTemplate(mathTemplates, cal1, MathProblemKind.LIMIT_RATIONAL_FUNCTION,
+                    "Limit of rational function — substitution (fraction answer)",
+                    "{\"mode\":\"SUBSTITUTION\"}", 1.0);
+            ensureMathTemplate(mathTemplates, cal1, MathProblemKind.LIMIT_RATIONAL_FUNCTION,
+                    "Limit of rational function — factor and cancel (0/0 form)",
+                    "{\"mode\":\"FACTOR_CANCEL\"}", 0.5);
+            ensureMathTemplate(mathTemplates, cal1, MathProblemKind.DERIVATIVE_POLY_AT_POINT,
+                    "Power rule — evaluate f'(c)", null, 0.5);
+            ensureMathTemplate(mathTemplates, cal1, MathProblemKind.DEFINITE_INTEGRAL_POLY,
+                    "Definite integral of a linear function", null, 0.5);
+
+            // --- Calculus 2 templates ---
+            ensureMathTemplate(mathTemplates, cal2, MathProblemKind.GEOMETRIC_SERIES_SUM,
+                    "Finite geometric series sum", null, 1.0);
+            ensureMathTemplate(mathTemplates, cal2, MathProblemKind.INTEGRAL_BY_SUBSTITUTION,
+                    "Definite integral by u-substitution", null, 1.0);
+            ensureMathTemplate(mathTemplates, cal2, MathProblemKind.SEQUENCE_NTH_TERM,
+                    "Arithmetic sequence — nth term",
+                    "{\"sequenceType\":\"ARITHMETIC\"}", 0.5);
+            ensureMathTemplate(mathTemplates, cal2, MathProblemKind.SEQUENCE_NTH_TERM,
+                    "Geometric sequence — nth term",
+                    "{\"sequenceType\":\"GEOMETRIC\",\"diffMin\":2,\"diffMax\":4}", 0.5);
+
+            // --- Calculus 3 templates ---
+            ensureMathTemplate(mathTemplates, cal3, MathProblemKind.PARTIAL_DERIVATIVE_AT_POINT,
+                    "First partial derivative at a point",
+                    "{\"withRespectTo\":\"random\"}", 0.5);
+            ensureMathTemplate(mathTemplates, cal3, MathProblemKind.SECOND_PARTIAL_DERIVATIVE,
+                    "Second derivative at a point", null, 0.5);
+            ensureMathTemplate(mathTemplates, cal3, MathProblemKind.DOUBLE_INTEGRAL_RECTANGLE,
+                    "Double integral over a rectangle", null, 0.5);
+
+            // --- Linear Algebra templates ---
+            ensureMathTemplate(mathTemplates, linAlg, MathProblemKind.DETERMINANT_2X2,
+                    "2×2 matrix determinant", null, 0.5);
+            ensureMathTemplate(mathTemplates, linAlg, MathProblemKind.DOT_PRODUCT,
+                    "3D dot product", "{\"dimension\":3}", 0.5);
+            ensureMathTemplate(mathTemplates, linAlg, MathProblemKind.DOT_PRODUCT,
+                    "2D dot product", "{\"dimension\":2}", 0.5);
+            ensureMathTemplate(mathTemplates, linAlg, MathProblemKind.CROSS_PRODUCT,
+                    "3D cross product", null, 0.5);
+            ensureMathTemplate(mathTemplates, linAlg, MathProblemKind.MATRIX_MULTIPLY_ENTRY,
+                    "Matrix multiplication — single entry",
+                    "{\"rowIndex\":-1,\"colIndex\":-1}", 0.5);
+            ensureMathTemplate(mathTemplates, linAlg, MathProblemKind.EIGENVALUE_2X2,
+                    "2×2 eigenvalues", null, 0.5);
+
+            // --- Differential Equations templates ---
+            ensureMathTemplate(mathTemplates, diffEq, MathProblemKind.ODE_SEPARABLE_POLY,
+                    "Separable ODE — polynomial right-hand side", null, 0.5);
+            ensureMathTemplate(mathTemplates, diffEq, MathProblemKind.ODE_CHARACTERISTIC_EQUATION,
+                    "Characteristic equation roots", null, 0.5);
+            ensureMathTemplate(mathTemplates, diffEq, MathProblemKind.ODE_EXPONENTIAL_IC,
+                    "Exponential growth/decay — y(1)",
+                    "{\"kMin\":1,\"kMax\":2,\"y0Min\":1,\"y0Max\":4}", 2.0);
 
             // --- Homework ---
             if (homework.count() == 0) {
@@ -283,6 +372,14 @@ public class DataSeeder {
             s.setActive(true);
             return repo.save(s);
         });
+    }
+
+    /** Idempotently sets child.parent = parent and saves if changed. */
+    private void ensureParent(SubjectRepository repo, Subject child, Subject parent) {
+        if (child.getParent() == null || !child.getParent().getId().equals(parent.getId())) {
+            child.setParent(parent);
+            repo.save(child);
+        }
     }
 
     private void ensureMathTemplate(MathProblemTemplateRepository repo,
