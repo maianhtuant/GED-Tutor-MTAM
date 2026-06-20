@@ -65,7 +65,14 @@ public class AdminController {
 
     @GetMapping("/subjects")
     public String subjects(Model model) {
-        model.addAttribute("subjects", subjectService.listAll());
+        List<Subject> roots = subjectService.listAllRoots();
+        // Build an ordered map: root → children, so the template can render a tree.
+        Map<Long, List<Subject>> childMap = new java.util.LinkedHashMap<>();
+        for (Subject root : roots) {
+            childMap.put(root.getId(), subjectService.listChildren(root));
+        }
+        model.addAttribute("roots", roots);
+        model.addAttribute("childMap", childMap);
         model.addAttribute("form", new SubjectForm());
         return "admin/subjects";
     }

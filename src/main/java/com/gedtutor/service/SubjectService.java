@@ -33,12 +33,17 @@ public class SubjectService {
         return subjectRepository.findByActiveTrueOrderByDisplayOrderAscNameAsc();
     }
 
-    /** Root subjects only (parent == null) — for the top-level tab bar. */
+    /** Active root subjects only (parent == null) — for the top-level tab bar. */
     public List<Subject> listRoots() {
         return subjectRepository.findByParentIsNullAndActiveTrueOrderByDisplayOrderAscNameAsc();
     }
 
-    /** Children of the given parent subject — for the sub-tab row. */
+    /** All root subjects including inactive — for the admin tree view. */
+    public List<Subject> listAllRoots() {
+        return subjectRepository.findByParentIsNullOrderByDisplayOrderAscNameAsc();
+    }
+
+    /** Children of the given parent — for the sub-tab row and admin tree. */
     public List<Subject> listChildren(Subject parent) {
         return subjectRepository.findByParentOrderByDisplayOrderAscNameAsc(parent);
     }

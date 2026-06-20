@@ -15,6 +15,9 @@ public interface SubjectRepository extends JpaRepository<Subject, Long> {
     /** Root subjects only (no parent) — used for the top-level tab bar. */
     List<Subject> findByParentIsNullAndActiveTrueOrderByDisplayOrderAscNameAsc();
 
+    /** All root subjects regardless of active status — used for the admin tree view. */
+    List<Subject> findByParentIsNullOrderByDisplayOrderAscNameAsc();
+
     /** Children of a given parent subject — used for the sub-tab row. */
     List<Subject> findByParentOrderByDisplayOrderAscNameAsc(Subject parent);
 

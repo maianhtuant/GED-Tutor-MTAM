@@ -13,11 +13,24 @@
     <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
     <div class="alert alert-error"   th:if="${error}"   th:text="${error}"></div>
 
-    <p class="muted" th:if="${#lists.isEmpty(subjects)}">
+    <p class="muted" th:if="${#lists.isEmpty(roots)}">
         No subjects yet. Use <b>+ New subject</b> to add your first one (e.g. Math, ESL).
     </p>
 
-    <table class="table" th:if="${!#lists.isEmpty(subjects)}">
+    <style>
+        .subject-parent td { background: var(--surface, #fff); }
+        .subject-parent .subject-name { font-weight: 600; }
+        .subject-child  td { background: var(--surface-alt, #fafafa); }
+        .subject-child .child-indent {
+            display: flex;
+            align-items: center;
+            gap: .4rem;
+            padding-left: 1.5rem;
+        }
+        .child-branch { color: #bbb; font-size: .9rem; flex-shrink: 0; }
+    </style>
+
+    <table class="table" th:if="${!#lists.isEmpty(roots)}">
         <thead>
         <tr>
             <th>Order</th>
@@ -27,32 +40,64 @@
             <th>Actions</th>
         </tr>
         </thead>
-        <tbody>
-        <tr th:each="s : ${subjects}">
-            <td th:text="${s.displayOrder}">0</td>
-            <td>
-                <a th:href="@{|/admin/subjects/${s.id}/edit|}" th:text="${s.name}">Name</a>
-            </td>
-            <td class="muted" th:text="${s.description != null ? s.description : '—'}">—</td>
-            <td>
-                <span th:if="${s.active}"  class="badge" style="background:#28a745;color:#fff;">Active</span>
-                <span th:unless="${s.active}" class="badge" style="background:#6c757d;color:#fff;">Inactive</span>
-            </td>
-            <td>
-                <a th:href="@{|/admin/subjects/${s.id}/edit|}" class="btn">Edit</a>
 
-                <form th:action="@{|/admin/subjects/${s.id}/toggle|}" method="post" style="display:inline">
-                    <input type="hidden" name="active" th:value="${!s.active}">
-                    <button type="submit" class="btn"
-                            th:text="${s.active ? 'Deactivate' : 'Activate'}">Toggle</button>
-                </form>
+        <!-- One <tbody> per root so borders visually group each family -->
+        <tbody th:each="root : ${roots}">
 
-                <form th:action="@{|/admin/subjects/${s.id}/delete|}" method="post" style="display:inline"
-                      onsubmit="return confirm('Delete this subject? This only works if no videos or homework reference it.');">
-                    <button type="submit" class="btn btn-danger">Delete</button>
-                </form>
-            </td>
-        </tr>
+            <!-- Parent row -->
+            <tr class="subject-parent">
+                <td th:text="${root.displayOrder}">0</td>
+                <td>
+                    <a class="subject-name"
+                       th:href="@{|/admin/subjects/${root.id}/edit|}"
+                       th:text="${root.name}">Name</a>
+                </td>
+                <td class="muted" th:text="${root.description != null ? root.description : '—'}">—</td>
+                <td>
+                    <span th:if="${root.active}"   class="badge" style="background:#28a745;color:#fff;">Active</span>
+                    <span th:unless="${root.active}" class="badge" style="background:#6c757d;color:#fff;">Inactive</span>
+                </td>
+                <td>
+                    <a th:href="@{|/admin/subjects/${root.id}/edit|}" class="btn">Edit</a>
+                    <form th:action="@{|/admin/subjects/${root.id}/toggle|}" method="post" style="display:inline">
+                        <button type="submit" class="btn"
+                                th:text="${root.active ? 'Deactivate' : 'Activate'}">Toggle</button>
+                    </form>
+                    <form th:action="@{|/admin/subjects/${root.id}/delete|}" method="post" style="display:inline"
+                          onsubmit="return confirm('Delete this subject? Only works if no videos or homework reference it.');">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+
+            <!-- Child rows (indented under parent) -->
+            <tr class="subject-child" th:each="child : ${childMap[root.id]}">
+                <td th:text="${child.displayOrder}">0</td>
+                <td>
+                    <div class="child-indent">
+                        <span class="child-branch">└</span>
+                        <a th:href="@{|/admin/subjects/${child.id}/edit|}"
+                           th:text="${child.name}">Child</a>
+                    </div>
+                </td>
+                <td class="muted" th:text="${child.description != null ? child.description : '—'}">—</td>
+                <td>
+                    <span th:if="${child.active}"   class="badge" style="background:#28a745;color:#fff;">Active</span>
+                    <span th:unless="${child.active}" class="badge" style="background:#6c757d;color:#fff;">Inactive</span>
+                </td>
+                <td>
+                    <a th:href="@{|/admin/subjects/${child.id}/edit|}" class="btn">Edit</a>
+                    <form th:action="@{|/admin/subjects/${child.id}/toggle|}" method="post" style="display:inline">
+                        <button type="submit" class="btn"
+                                th:text="${child.active ? 'Deactivate' : 'Activate'}">Toggle</button>
+                    </form>
+                    <form th:action="@{|/admin/subjects/${child.id}/delete|}" method="post" style="display:inline"
+                          onsubmit="return confirm('Delete this subject? Only works if no videos or homework reference it.');">
+                        <button type="submit" class="btn btn-danger">Delete</button>
+                    </form>
+                </td>
+            </tr>
+
         </tbody>
     </table>
 
