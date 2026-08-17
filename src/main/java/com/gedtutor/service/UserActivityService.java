@@ -3,7 +3,9 @@ package com.gedtutor.service;
 import com.gedtutor.dto.ActivityEntry;
 import com.gedtutor.dto.SubjectActivity;
 import com.gedtutor.dto.UserActivitySummary;
+import com.gedtutor.model.Homework;
 import com.gedtutor.model.PracticeAttempt;
+import com.gedtutor.model.PracticeSet;
 import com.gedtutor.model.QuizAttempt;
 import com.gedtutor.model.Subject;
 import com.gedtutor.repository.PracticeAttemptRepository;
@@ -49,9 +51,12 @@ public class UserActivityService {
             if (a.getScore() == null || a.getTotalQuestions() == null || a.getTotalQuestions() == 0) {
                 continue; // shouldn't happen for a completed attempt, but be defensive
             }
-            String kind = a.getHomework().isMathQuiz() ? "Math Quiz" : "Quiz";
-            ActivityEntry entry = new ActivityEntry(kind, a.getHomework().getTitle(),
-                    a.getScore(), a.getTotalQuestions(), a.getCompletedAt());
+            Homework hw = a.getHomework();
+            String kind = hw.isMathQuiz() ? "Math Quiz" : "Quiz";
+            String subjectName = hw.getSubject() != null ? hw.getSubject().getName() : "—";
+            ActivityEntry entry = new ActivityEntry(kind, subjectName, hw.getTitle(),
+                    a.getScore(), a.getTotalQuestions(), a.getCompletedAt(),
+                    "/admin/attempts/quiz/" + a.getId());
             byStudent.computeIfAbsent(a.getStudent().getId(), k -> new ArrayList<>()).add(entry);
         }
 
@@ -59,8 +64,11 @@ public class UserActivityService {
             if (a.getScore() == null || a.getTotalQuestions() == null || a.getTotalQuestions() == 0) {
                 continue;
             }
-            ActivityEntry entry = new ActivityEntry("Practice", a.getPracticeSet().getTitle(),
-                    a.getScore(), a.getTotalQuestions(), a.getCompletedAt());
+            PracticeSet set = a.getPracticeSet();
+            String subjectName = set.getSubject() != null ? set.getSubject().getName() : "—";
+            ActivityEntry entry = new ActivityEntry("Practice", subjectName, set.getTitle(),
+                    a.getScore(), a.getTotalQuestions(), a.getCompletedAt(),
+                    "/admin/attempts/practice/" + a.getId());
             byStudent.computeIfAbsent(a.getStudent().getId(), k -> new ArrayList<>()).add(entry);
         }
 

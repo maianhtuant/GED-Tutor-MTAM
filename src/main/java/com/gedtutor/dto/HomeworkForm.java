@@ -42,6 +42,15 @@ public class HomeworkForm {
     /** Total questions to generate when {@link #mathQuiz} is true. */
     private Integer mathQuestionCount = 40;
 
+    /**
+     * When true, a countdown timer runs while the student takes this quiz
+     * and the attempt auto-submits when time runs out.
+     */
+    private boolean timerEnabled = false;
+
+    /** Timer duration in minutes, used when {@link #timerEnabled} is true. */
+    private Integer timerMinutes = 10;
+
     public HomeworkForm() {}
 
     public Long getId() { return id; }
@@ -79,4 +88,10 @@ public class HomeworkForm {
 
     public Integer getMathQuestionCount() { return mathQuestionCount; }
     public void setMathQuestionCount(Integer mathQuestionCount) { this.mathQuestionCount = mathQuestionCount; }
+
+    public boolean isTimerEnabled() { return timerEnabled; }
+    public void setTimerEnabled(boolean timerEnabled) { this.timerEnabled = timerEnabled; }
+
+    public Integer getTimerMinutes() { return timerMinutes; }
+    public void setTimerMinutes(Integer timerMinutes) { this.timerMinutes = timerMinutes; }
 }

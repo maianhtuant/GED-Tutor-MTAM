@@ -48,7 +48,7 @@
                 </form>
 
                 <form th:action="@{|/admin/subjects/${s.id}/delete|}" method="post" style="display:inline"
-                      onsubmit="return confirm('Delete this subject? This only works if no videos or homework reference it.');">
+                      onsubmit="return confirm('Delete this subject? This only works if no videos or quizzes reference it.');">
                     <button type="submit" class="btn btn-danger">Delete</button>
                 </form>
             </td>
@@ -57,7 +57,7 @@
     </table>
 
     <p class="muted" style="margin-top:1.5rem;">
-        Tip: if a subject is still in use by videos or homework, you can't delete it — but you can
+        Tip: if a subject is still in use by videos or quizzes, you can't delete it — but you can
         <b>Deactivate</b> it so it won't show up in new-content dropdowns.
     </p>
 </main>

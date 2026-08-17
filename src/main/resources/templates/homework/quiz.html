@@ -33,12 +33,24 @@
   .submit-all-box p { margin:0 0 1rem; color:#555; }
   #submitAllBtn { font-size:1rem; padding:0.65rem 2rem; }
   #submitAllBtn:disabled { opacity:0.5; cursor:default; }
+  .quiz-timer { position:fixed; left:20px; top:140px; background:#fff; border:2px solid #28a745;
+                border-radius:10px; padding:0.85rem 1.1rem; text-align:center;
+                box-shadow:0 2px 10px rgba(0,0,0,0.12); z-index:50; min-width:110px; }
+  .quiz-timer-label { font-size:0.7rem; color:#888; text-transform:uppercase; letter-spacing:0.05em; margin-bottom:0.25rem; }
+  .quiz-timer-value { font-size:1.6rem; font-weight:700; color:#28a745; font-variant-numeric:tabular-nums; }
+  .quiz-timer.warning { border-color:#ffc107; }
+  .quiz-timer.warning .quiz-timer-value { color:#b8860b; }
+  .quiz-timer.danger { border-color:#dc3545; }
+  .quiz-timer.danger .quiz-timer-value { color:#dc3545; }
+  @media (max-width: 992px) {
+    .quiz-timer { position:static; display:inline-block; margin-bottom:1rem; }
+  }
 </style>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container">
-    <a th:href="@{/homework}" class="back-link">&larr; Back to Homework</a>
+    <a th:href="@{/homework}" class="back-link">&larr; Back to Quizzes</a>
     <h1 th:text="${hw.title}">Quiz</h1>
 
     <!-- Attempt info -->
@@ -85,6 +97,10 @@
 
     <!-- Quiz in progress -->
     <div th:if="${quizStarted}" id="quizArea">
+        <div th:if="${hw.timerEnabled}" id="quizTimerBox" class="quiz-timer">
+            <div class="quiz-timer-label">Time Remaining</div>
+            <div class="quiz-timer-value" id="timerValue">--:--</div>
+        </div>
         <div id="progressBar"><div id="progressFill"></div></div>
         <div id="progressLabel">0 of <span id="totalLabel" th:text="${#lists.size(questions)}">0</span> completed</div>
 
@@ -195,6 +211,44 @@
 
     const csrfToken  = document.querySelector('meta[name="_csrf"]')?.content || '';
     const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content || 'X-CSRF-TOKEN';
+
+    // ── Countdown timer (only present when the admin enabled it) ──
+    const timerEnabled  = /*[[${quizStarted and hw.timerEnabled}]]*/ false;
+    let timerSeconds     = /*[[${timerSeconds}]]*/ -1;
+    let timerInterval    = null;
+    let quizFinished      = false;
+
+    function formatTime(totalSecs) {
+        const m = Math.floor(totalSecs / 60);
+        const s = totalSecs % 60;
+        return m + ':' + String(s).padStart(2, '0');
+    }
+
+    function updateTimerDisplay() {
+        const box = document.getElementById('quizTimerBox');
+        const val = document.getElementById('timerValue');
+        if (!box || !val) return;
+        val.textContent = formatTime(Math.max(timerSeconds, 0));
+        box.classList.remove('warning', 'danger');
+        if (timerSeconds <= 60) box.classList.add('danger');
+        else if (timerSeconds <= 180) box.classList.add('warning');
+    }
+
+    function startTimer() {
+        if (!timerEnabled || timerSeconds < 0) return;
+        updateTimerDisplay();
+        timerInterval = setInterval(function() {
+            timerSeconds--;
+            updateTimerDisplay();
+            if (timerSeconds <= 0) {
+                clearInterval(timerInterval);
+                if (!quizFinished) {
+                    alert("Time's up! Submitting your quiz automatically.");
+                    finishQuiz();
+                }
+            }
+        }, 1000);
+    }
 
     function updateProgress() {
         answered++;
@@ -333,6 +387,9 @@
     }
 
     function finishQuiz() {
+        if (quizFinished) return;
+        quizFinished = true;
+        if (timerInterval) clearInterval(timerInterval);
         const attemptId = document.querySelector('[data-attemptid]')?.dataset?.attemptid;
         if (!attemptId) return;
         const submitBtn = document.getElementById('submitAllBtn');
@@ -361,6 +418,7 @@
             alert('Could not submit quiz: ' + err.message);
         });
     }
+    startTimer();
 </script>
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <script>renderMathInQuiz();</script>

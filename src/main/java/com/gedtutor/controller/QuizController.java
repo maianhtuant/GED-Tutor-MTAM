@@ -81,6 +81,7 @@ public class QuizController {
             model.addAttribute("hw", hw);
             model.addAttribute("attempt", attempt);
             model.addAttribute("state", state);
+            model.addAttribute("timerSeconds", timerSecondsRemaining(hw, attempt));
             return "homework/math-quiz-run";
         }
 
@@ -90,13 +91,30 @@ public class QuizController {
 
         model.addAttribute("hw", hw);
         model.addAttribute("questions", questions);
+        model.addAttribute("attempt", attempt);
         model.addAttribute("attemptId", attempt.getId());
         model.addAttribute("canAttempt", quizService.canAttempt(student, hw));
         model.addAttribute("attemptCount", quizService.getAttemptCount(student, hw));
         model.addAttribute("maxAttempts", quizService.getMaxAttempts());
         model.addAttribute("attempts", quizService.getAttempts(student, hw));
         model.addAttribute("quizStarted", true);
+        model.addAttribute("timerSeconds", timerSecondsRemaining(hw, attempt));
         return "homework/quiz";
+    }
+
+    /**
+     * Seconds left on the countdown at render time, computed from the
+     * attempt's startedAt so the timer reflects the server clock rather
+     * than trusting the browser. Returns -1 when the homework has no
+     * timer enabled (the template treats -1 as "don't show a timer").
+     */
+    private long timerSecondsRemaining(Homework hw, QuizAttempt attempt) {
+        if (!hw.isTimerEnabled()) return -1;
+        int minutes = (hw.getTimerMinutes() != null && hw.getTimerMinutes() > 0)
+                ? hw.getTimerMinutes() : 10;
+        long totalSeconds = minutes * 60L;
+        long elapsed = java.time.Duration.between(attempt.getStartedAt(), java.time.LocalDateTime.now()).getSeconds();
+        return Math.max(totalSeconds - elapsed, 0);
     }
 
     // --- Existing static-question grading endpoint (unchanged). ---

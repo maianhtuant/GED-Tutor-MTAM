@@ -12,6 +12,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -275,10 +276,7 @@ public class QuizService {
         boolean result = switch (q.getType()) {
             case MULTIPLE_CHOICE -> correct.equals(given);
             case TRUE_FALSE -> correct.equals(given);
-            // For fill-in-the-blank we accept exact matches as well as near-matches.
-            // The empty-string guards above prevent "anything contains empty" from
-            // becoming a wildcard.
-            case FILL_BLANK -> correct.equals(given) || correct.contains(given) || given.contains(correct);
+            case FILL_BLANK -> matchesFillBlank(correct, given);
         };
 
         // Log as single-quoted strings with lengths so hidden whitespace / unicode is visible.
@@ -286,5 +284,47 @@ public class QuizService {
                 q.getId(), q.getType(), correct, correct.length(),
                 given, given.length(), result ? "MATCH" : "NO MATCH");
         return result;
+    }
+
+    /**
+     * Fill-in-the-blank matching: exact match always counts. Beyond that,
+     * the rule depends on whether the answer is numeric or text, because a
+     * single "contains" rule can't safely serve both:
+     *   - Numeric answers ("2", "12") are compared as numbers, so "2.0"
+     *     still matches "2" — but a student typing "123" is NOT a match for
+     *     "2" just because "2" happens to appear as a substring of "123".
+     *     (That exact bug is what let "123" get marked correct for both
+     *     "x = 2" and "x = 12".)
+     *   - Text answers ("Lincoln" / "Abraham Lincoln") still get partial
+     *     credit, but only on whole-word boundaries — "art" no longer
+     *     matches inside "cart".
+     */
+    private boolean matchesFillBlank(String correct, String given) {
+        if (correct.equals(given)) return true;
+
+        Double correctNum = tryParseNumber(correct);
+        Double givenNum = tryParseNumber(given);
+        if (correctNum != null && givenNum != null) {
+            return Math.abs(correctNum - givenNum) < 1e-9;
+        }
+        if (correctNum != null || givenNum != null) {
+            // One side looks numeric and the other doesn't — never a match.
+            return false;
+        }
+
+        return containsWholeWord(correct, given) || containsWholeWord(given, correct);
+    }
+
+    private static Double tryParseNumber(String s) {
+        try {
+            return Double.parseDouble(s);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private static boolean containsWholeWord(String haystack, String needle) {
+        if (needle.isEmpty()) return false;
+        return Pattern.compile("\\b" + Pattern.quote(needle) + "\\b").matcher(haystack).find();
     }
 }

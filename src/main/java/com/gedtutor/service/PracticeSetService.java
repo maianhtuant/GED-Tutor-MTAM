@@ -4,6 +4,7 @@ import com.gedtutor.model.MathProblemTemplate;
 import com.gedtutor.model.PracticeSet;
 import com.gedtutor.model.PracticeSetItem;
 import com.gedtutor.repository.MathProblemTemplateRepository;
+import com.gedtutor.repository.PracticeAnswerRepository;
 import com.gedtutor.repository.PracticeAttemptRepository;
 import com.gedtutor.repository.PracticeSetItemRepository;
 import com.gedtutor.repository.PracticeSetRepository;
@@ -25,15 +26,18 @@ public class PracticeSetService {
     private final PracticeSetItemRepository itemRepo;
     private final MathProblemTemplateRepository templateRepo;
     private final PracticeAttemptRepository attemptRepo;
+    private final PracticeAnswerRepository answerRepo;
 
     public PracticeSetService(PracticeSetRepository setRepo,
                               PracticeSetItemRepository itemRepo,
                               MathProblemTemplateRepository templateRepo,
-                              PracticeAttemptRepository attemptRepo) {
+                              PracticeAttemptRepository attemptRepo,
+                              PracticeAnswerRepository answerRepo) {
         this.setRepo = setRepo;
         this.itemRepo = itemRepo;
         this.templateRepo = templateRepo;
         this.attemptRepo = attemptRepo;
+        this.answerRepo = answerRepo;
     }
 
     public List<PracticeSet> listAll() {
@@ -55,15 +59,17 @@ public class PracticeSetService {
     }
 
     /**
-     * Delete a practice set along with its dependent practice_attempts —
-     * otherwise the FK from practice_attempts.practice_set_id blocks the
-     * delete for any set a student has actually run (same pattern as
+     * Delete a practice set along with its dependent practice_attempts
+     * (and their practice_answers) — otherwise the FKs block the delete
+     * for any set a student has actually run (same pattern as
      * {@code HomeworkService.delete} clearing quiz_attempts first).
      * PracticeSetItems are cleaned up automatically via cascade/orphanRemoval.
      */
     @Transactional
     public void delete(Long id) {
         PracticeSet set = findById(id);
+        answerRepo.deleteByPracticeSet(set);
+        answerRepo.flush();
         attemptRepo.deleteByPracticeSet(set);
         attemptRepo.flush();
         setRepo.deleteById(id);

@@ -4,10 +4,12 @@ import com.gedtutor.dto.GeneratedMathProblem;
 import com.gedtutor.dto.MathAnswerResult;
 import com.gedtutor.dto.PracticeRunState;
 import com.gedtutor.model.MathProblemTemplate;
+import com.gedtutor.model.PracticeAnswer;
 import com.gedtutor.model.PracticeAttempt;
 import com.gedtutor.model.PracticeSet;
 import com.gedtutor.model.PracticeSetItem;
 import com.gedtutor.model.User;
+import com.gedtutor.repository.PracticeAnswerRepository;
 import com.gedtutor.repository.PracticeAttemptRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Service;
@@ -39,15 +41,18 @@ public class PracticeRunService {
     private final MathProblemService problemService;
     private final MathAnswerChecker checker;
     private final PracticeAttemptRepository attemptRepo;
+    private final PracticeAnswerRepository answerRepo;
 
     public PracticeRunService(PracticeSetService setService,
                               MathProblemService problemService,
                               MathAnswerChecker checker,
-                              PracticeAttemptRepository attemptRepo) {
+                              PracticeAttemptRepository attemptRepo,
+                              PracticeAnswerRepository answerRepo) {
         this.setService = setService;
         this.problemService = problemService;
         this.checker = checker;
         this.attemptRepo = attemptRepo;
+        this.answerRepo = answerRepo;
     }
 
     /**
@@ -114,13 +119,24 @@ public class PracticeRunService {
         MathAnswerResult result = checker.check(problem, answer);
         state.results.put(questionIndex, result);
 
-        if (state.isDone() && !state.attemptSaved && state.attemptId != null) {
+        if (state.attemptId != null) {
             attemptRepo.findById(state.attemptId).ifPresent(attempt -> {
-                attempt.setScore(state.totalCorrect());
-                attempt.setCompletedAt(LocalDateTime.now());
-                attemptRepo.save(attempt);
+                PracticeAnswer record = new PracticeAnswer();
+                record.setAttempt(attempt);
+                record.setQuestionIndex(questionIndex);
+                record.setQuestionText(problem.questionText());
+                record.setExpectedAnswer(result.expected());
+                record.setStudentAnswer(result.submitted());
+                record.setCorrect(result.correct());
+                answerRepo.save(record);
+
+                if (state.isDone() && !state.attemptSaved) {
+                    attempt.setScore(state.totalCorrect());
+                    attempt.setCompletedAt(LocalDateTime.now());
+                    attemptRepo.save(attempt);
+                    state.attemptSaved = true;
+                }
             });
-            state.attemptSaved = true;
         }
 
         store(session, state);

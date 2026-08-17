@@ -6,6 +6,7 @@ import com.gedtutor.dto.SubjectForm;
 import com.gedtutor.dto.VideoForm;
 import com.gedtutor.model.*;
 import com.gedtutor.repository.MathProblemTemplateRepository;
+import com.gedtutor.service.AttemptDetailService;
 import com.gedtutor.service.HomeworkService;
 import com.gedtutor.service.QuizService;
 import com.gedtutor.service.SubjectService;
@@ -38,12 +39,14 @@ public class AdminController {
     private final SubjectService subjectService;
     private final MathProblemTemplateRepository mathTemplateRepository;
     private final UserActivityService userActivityService;
+    private final AttemptDetailService attemptDetailService;
 
     public AdminController(VideoService videoService, UserService userService,
                            HomeworkService homeworkService, QuizService quizService,
                            SubjectService subjectService,
                            MathProblemTemplateRepository mathTemplateRepository,
-                           UserActivityService userActivityService) {
+                           UserActivityService userActivityService,
+                           AttemptDetailService attemptDetailService) {
         this.videoService = videoService;
         this.userService = userService;
         this.homeworkService = homeworkService;
@@ -51,6 +54,7 @@ public class AdminController {
         this.subjectService = subjectService;
         this.mathTemplateRepository = mathTemplateRepository;
         this.userActivityService = userActivityService;
+        this.attemptDetailService = attemptDetailService;
     }
 
     // ===================== Dashboard =====================
@@ -269,6 +273,38 @@ public class AdminController {
         return "admin/users-activity";
     }
 
+    /**
+     * Per-user activity list: every completed quiz/math-quiz/practice run
+     * for this one student, with an "Overview" link to that attempt's
+     * question-by-question detail. Reached by clicking the Activity button
+     * on a row in /admin/users.
+     */
+    @GetMapping("/users/{id}/activity")
+    public String userActivity(@PathVariable Long id, Model model) {
+        model.addAttribute("targetUser", userService.findById(id));
+        model.addAttribute("summary", userActivityService.summarizeAll().get(id));
+        return "admin/user-activity";
+    }
+
+    /**
+     * Question-by-question overview for one QuizAttempt — covers both a
+     * regular static-question quiz and a math-quiz-mode homework attempt
+     * (dispatched internally by AttemptDetailService based on the
+     * homework's mathQuiz flag).
+     */
+    @GetMapping("/attempts/quiz/{attemptId}")
+    public String quizAttemptOverview(@PathVariable Long attemptId, Model model) {
+        model.addAttribute("detail", attemptDetailService.getQuizAttemptDetail(attemptId));
+        return "admin/attempt-detail";
+    }
+
+    /** Question-by-question overview for one practice-set run. */
+    @GetMapping("/attempts/practice/{attemptId}")
+    public String practiceAttemptOverview(@PathVariable Long attemptId, Model model) {
+        model.addAttribute("detail", attemptDetailService.getPracticeAttemptDetail(attemptId));
+        return "admin/attempt-detail";
+    }
+
     @PostMapping("/users/{id}/role")
     public String setRole(@PathVariable Long id, @RequestParam Role role, RedirectAttributes ra) {
         userService.setRole(id, role);
@@ -326,44 +362,66 @@ public class AdminController {
         model.addAttribute("form", new HomeworkForm());
         model.addAttribute("subjects", subjectService.listActive());
         model.addAttribute("videos", videoService.listAll());
+        model.addAttribute("templates", mathTemplateRepository.findByActiveTrueOrderByIdAsc());
         return "admin/homework-form";
     }
 
     @PostMapping("/homework/new")
     public String createHomework(@Valid @ModelAttribute("form") HomeworkForm form,
                                  BindingResult binding,
+                                 @RequestParam(value = "starterTemplateId", required = false) List<Long> starterTemplateIds,
+                                 @RequestParam(value = "starterQuestionCount", required = false) List<Integer> starterCounts,
                                  Model model,
                                  RedirectAttributes ra) {
         if (binding.hasErrors()) {
             model.addAttribute("subjects", subjectService.listActive());
             model.addAttribute("videos", videoService.listAll());
+            model.addAttribute("templates", mathTemplateRepository.findByActiveTrueOrderByIdAsc());
             return "admin/homework-form";
         }
-        // Save the homework. If a poolSize was declared, HomeworkService
+        // Save the quiz. If a poolSize was declared, HomeworkService
         // randomly picks that many questions from the subject's bank and
-        // links them to the new homework. Questions themselves are managed
+        // links them to the new quiz. Questions themselves are managed
         // globally on /admin/questions.
         Homework saved = homeworkService.save(form);
+
+        // Optional starter math-quiz items: parallel arrays from the inline
+        // form rows, same pattern as the practice-set admin form.
+        int itemsAdded = 0;
+        if (starterTemplateIds != null && starterCounts != null) {
+            int n = Math.min(starterTemplateIds.size(), starterCounts.size());
+            for (int i = 0; i < n; i++) {
+                Long tid = starterTemplateIds.get(i);
+                Integer cnt = starterCounts.get(i);
+                if (tid == null || cnt == null || cnt <= 0) continue;
+                homeworkService.addMathItem(saved.getId(), tid, cnt);
+                itemsAdded++;
+            }
+        }
+
         Integer target = saved.getPoolSize();
         if (target != null && target > 0) {
             int linked = saved.getQuestions().size();
             if (linked == target) {
                 ra.addFlashAttribute("message",
-                        "Homework '" + saved.getTitle() + "' created with "
+                        "Quiz '" + saved.getTitle() + "' created with "
                                 + linked + " random questions from the "
                                 + saved.getSubject().getName() + " bank.");
             } else {
                 ra.addFlashAttribute("message",
-                        "Homework '" + saved.getTitle() + "' created. Only "
+                        "Quiz '" + saved.getTitle() + "' created. Only "
                                 + linked + " of " + target + " questions could be linked — "
                                 + "the " + saved.getSubject().getName()
                                 + " bank doesn't have enough questions yet. "
                                 + "Add more on the Questions page.");
             }
+        } else if (itemsAdded > 0) {
+            ra.addFlashAttribute("message",
+                    "Quiz '" + saved.getTitle() + "' created with " + itemsAdded + " math item(s).");
         } else {
-            ra.addFlashAttribute("message", "Homework '" + saved.getTitle() + "' created.");
+            ra.addFlashAttribute("message", "Quiz '" + saved.getTitle() + "' created.");
         }
-        return "redirect:/admin/homework";
+        return "redirect:/admin/homework/" + saved.getId() + "/edit";
     }
 
     @GetMapping("/homework/{id}/edit")
@@ -381,10 +439,14 @@ public class AdminController {
         form.setPoolSize(hw.getPoolSize());
         form.setMathQuiz(hw.isMathQuiz());
         form.setMathQuestionCount(hw.getMathQuestionCount() != null ? hw.getMathQuestionCount() : 40);
+        form.setTimerEnabled(hw.isTimerEnabled());
+        form.setTimerMinutes(hw.getTimerMinutes() != null ? hw.getTimerMinutes() : 10);
         form.setVideoId(hw.getVideo() != null ? hw.getVideo().getId() : null);
         model.addAttribute("form", form);
         model.addAttribute("subjects", subjectService.listActive());
         model.addAttribute("videos", videoService.listAll());
+        model.addAttribute("hw", hw);
+        model.addAttribute("templates", mathTemplateRepository.findByActiveTrueOrderByIdAsc());
         return "admin/homework-form";
     }
 
@@ -397,19 +459,48 @@ public class AdminController {
         if (binding.hasErrors()) {
             model.addAttribute("subjects", subjectService.listActive());
             model.addAttribute("videos", videoService.listAll());
+            model.addAttribute("hw", homeworkService.findById(id));
+            model.addAttribute("templates", mathTemplateRepository.findByActiveTrueOrderByIdAsc());
             return "admin/homework-form";
         }
         form.setId(id);
         homeworkService.save(form);
-        ra.addFlashAttribute("message", "Homework updated.");
+        ra.addFlashAttribute("message", "Quiz updated.");
         return "redirect:/admin/homework";
     }
 
     @PostMapping("/homework/{id}/delete")
     public String deleteHomework(@PathVariable Long id, RedirectAttributes ra) {
         homeworkService.delete(id);
-        ra.addFlashAttribute("message", "Homework deleted.");
+        ra.addFlashAttribute("message", "Quiz deleted.");
         return "redirect:/admin/homework";
+    }
+
+    // ----- Math-quiz items: pick a template + how many questions from it,
+    // same "Items" pattern as the practice-set admin form. -----
+
+    @PostMapping("/homework/{id}/math-items")
+    public String addHomeworkMathItem(@PathVariable Long id,
+                                      @RequestParam Long templateId,
+                                      @RequestParam int questionCount,
+                                      RedirectAttributes ra) {
+        homeworkService.addMathItem(id, templateId, questionCount);
+        ra.addFlashAttribute("message", "Item added.");
+        return "redirect:/admin/homework/" + id + "/edit";
+    }
+
+    @PostMapping("/homework/{id}/math-items/{itemId}/delete")
+    public String removeHomeworkMathItem(@PathVariable Long id, @PathVariable Long itemId, RedirectAttributes ra) {
+        homeworkService.removeMathItem(itemId);
+        ra.addFlashAttribute("message", "Item removed.");
+        return "redirect:/admin/homework/" + id + "/edit";
+    }
+
+    @PostMapping("/homework/{id}/math-items/{itemId}/move")
+    public String moveHomeworkMathItem(@PathVariable Long id, @PathVariable Long itemId,
+                                       @RequestParam int delta) {
+        homeworkService.moveMathItem(itemId, delta);
+        return "redirect:/admin/homework/" + id + "/edit";
     }
 
     /**

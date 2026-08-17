@@ -2,19 +2,25 @@ package com.gedtutor.service;
 
 import com.gedtutor.dto.HomeworkForm;
 import com.gedtutor.model.Homework;
+import com.gedtutor.model.HomeworkMathItem;
 import com.gedtutor.model.HomeworkSubmission;
+import com.gedtutor.model.MathProblemTemplate;
 import com.gedtutor.model.Question;
 import com.gedtutor.model.QuizAttempt;
 import com.gedtutor.model.Subject;
 import com.gedtutor.model.User;
 import com.gedtutor.model.Video;
 import com.gedtutor.model.QuizAnswer;
+import com.gedtutor.repository.HomeworkMathItemRepository;
 import com.gedtutor.repository.HomeworkRepository;
 import com.gedtutor.repository.HomeworkSubmissionRepository;
+import com.gedtutor.repository.MathProblemTemplateRepository;
+import com.gedtutor.repository.MathQuizAnswerRepository;
 import com.gedtutor.repository.QuestionRepository;
 import com.gedtutor.repository.QuizAnswerRepository;
 import com.gedtutor.repository.QuizAttemptRepository;
 import com.gedtutor.repository.VideoRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +40,9 @@ public class HomeworkService {
     private final QuestionRepository questionRepository;
     private final QuizAttemptRepository quizAttemptRepository;
     private final QuizAnswerRepository answerRepository;
+    private final MathQuizAnswerRepository mathAnswerRepository;
+    private final HomeworkMathItemRepository mathItemRepository;
+    private final MathProblemTemplateRepository mathTemplateRepository;
 
     public HomeworkService(HomeworkRepository homeworkRepository,
                            HomeworkSubmissionRepository submissionRepository,
@@ -41,7 +50,10 @@ public class HomeworkService {
                            SubjectService subjectService,
                            QuestionRepository questionRepository,
                            QuizAttemptRepository quizAttemptRepository,
-                           QuizAnswerRepository answerRepository) {
+                           QuizAnswerRepository answerRepository,
+                           MathQuizAnswerRepository mathAnswerRepository,
+                           HomeworkMathItemRepository mathItemRepository,
+                           MathProblemTemplateRepository mathTemplateRepository) {
         this.homeworkRepository = homeworkRepository;
         this.submissionRepository = submissionRepository;
         this.videoRepository = videoRepository;
@@ -49,6 +61,9 @@ public class HomeworkService {
         this.questionRepository = questionRepository;
         this.quizAttemptRepository = quizAttemptRepository;
         this.answerRepository = answerRepository;
+        this.mathAnswerRepository = mathAnswerRepository;
+        this.mathItemRepository = mathItemRepository;
+        this.mathTemplateRepository = mathTemplateRepository;
     }
 
     public List<Homework> listPublished() {
@@ -88,6 +103,12 @@ public class HomeworkService {
         hw.setMathQuiz(form.isMathQuiz());
         Integer mqc = form.getMathQuestionCount();
         hw.setMathQuestionCount(mqc != null && mqc > 0 ? mqc : 40);
+
+        // Timer: when on, students see a countdown and the attempt
+        // auto-submits when it hits zero.
+        hw.setTimerEnabled(form.isTimerEnabled());
+        Integer tm = form.getTimerMinutes();
+        hw.setTimerMinutes(tm != null && tm > 0 ? tm : 10);
 
         if (form.getVideoId() != null) {
             Video v = videoRepository.findById(form.getVideoId()).orElse(null);
@@ -143,7 +164,8 @@ public class HomeworkService {
 
     /**
      * Delete a homework along with every row that depends on it:
-     *   - quiz_attempts (and their quiz_answers + quiz_attempt_questions via JPA cascade)
+     *   - quiz_attempts (and their quiz_answers + math_quiz_answers +
+     *     quiz_attempt_questions via JPA cascade)
      *   - homework_submissions
      *   - homework_questions join rows (via clearing the collection)
      *
@@ -154,9 +176,12 @@ public class HomeworkService {
     public void delete(Long id) {
         Homework hw = findById(id);
 
-        // Step 1 — quiz_answers (child of quiz_attempts, must go first)
+        // Step 1 — quiz_answers / math_quiz_answers (children of
+        // quiz_attempts, must go before the attempts themselves)
         answerRepository.deleteByHomework(hw);
         answerRepository.flush();
+        mathAnswerRepository.deleteByHomework(hw);
+        mathAnswerRepository.flush();
 
         // Step 2 — quiz_attempt_questions ElementCollection rows.
         // Clear the collection on each attempt entity so Hibernate removes
@@ -183,6 +208,44 @@ public class HomeworkService {
 
         // Step 6 — the homework itself
         homeworkRepository.deleteById(id);
+    }
+
+    // === Math-quiz items (recipe of template + question count) ===
+
+    @Transactional
+    public HomeworkMathItem addMathItem(Long homeworkId, Long templateId, int questionCount) {
+        Homework hw = findById(homeworkId);
+        MathProblemTemplate template = mathTemplateRepository.findById(templateId).orElseThrow(
+                () -> new EntityNotFoundException("Template not found: " + templateId));
+        int order = hw.getMathItems().isEmpty()
+                ? 0
+                : hw.getMathItems().get(hw.getMathItems().size() - 1).getOrderIndex() + 1;
+        HomeworkMathItem item = new HomeworkMathItem(hw, template, Math.max(1, questionCount), order);
+        hw.getMathItems().add(item);
+        mathItemRepository.save(item);
+        return item;
+    }
+
+    @Transactional
+    public void removeMathItem(Long itemId) {
+        mathItemRepository.deleteById(itemId);
+    }
+
+    /** Move an item up or down by swapping order indices with its neighbor. No-op at the ends. */
+    @Transactional
+    public void moveMathItem(Long itemId, int delta) {
+        HomeworkMathItem item = mathItemRepository.findById(itemId).orElseThrow(
+                () -> new EntityNotFoundException("Item not found: " + itemId));
+        List<HomeworkMathItem> siblings = item.getHomework().getMathItems();
+        int idx = siblings.indexOf(item);
+        int neighbor = idx + delta;
+        if (neighbor < 0 || neighbor >= siblings.size()) return;
+        HomeworkMathItem other = siblings.get(neighbor);
+        int tmp = item.getOrderIndex();
+        item.setOrderIndex(other.getOrderIndex());
+        other.setOrderIndex(tmp);
+        mathItemRepository.save(item);
+        mathItemRepository.save(other);
     }
 
     // === Submissions ===

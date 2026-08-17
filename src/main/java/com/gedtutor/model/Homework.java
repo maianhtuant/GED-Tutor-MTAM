@@ -67,9 +67,35 @@ public class Homework {
     @Column(nullable = false)
     private boolean mathQuiz = false;
 
-    /** Total math questions to generate per attempt when {@link #mathQuiz} is true. */
+    /**
+     * Total math questions to generate per attempt when {@link #mathQuiz} is
+     * true AND {@link #mathItems} is empty. Ignored once specific items are
+     * added below — the items' counts are what get used instead.
+     */
     @Column
     private Integer mathQuestionCount = 40;
+
+    /**
+     * Optional recipe of specific templates + how many questions to draw
+     * from each, same idea as {@link PracticeSetItem} on a practice set.
+     * When empty, {@link com.gedtutor.service.MathQuizService} falls back
+     * to drawing {@link #mathQuestionCount} questions evenly across every
+     * active template (the original behavior).
+     */
+    @OneToMany(mappedBy = "homework", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.EAGER)
+    @OrderBy("orderIndex ASC, id ASC")
+    private List<HomeworkMathItem> mathItems = new ArrayList<>();
+
+    /**
+     * When true, a countdown timer runs while the student takes this quiz
+     * and the attempt auto-submits when time runs out.
+     */
+    @Column(nullable = false)
+    private boolean timerEnabled = false;
+
+    /** Timer duration in minutes, used when {@link #timerEnabled} is true. */
+    @Column
+    private Integer timerMinutes = 10;
 
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -156,4 +182,22 @@ public class Homework {
 
     public Integer getMathQuestionCount() { return mathQuestionCount; }
     public void setMathQuestionCount(Integer mathQuestionCount) { this.mathQuestionCount = mathQuestionCount; }
+
+    public List<HomeworkMathItem> getMathItems() { return mathItems; }
+    public void setMathItems(List<HomeworkMathItem> mathItems) { this.mathItems = mathItems; }
+
+    /** Total questions a student will see in one attempt when items are used. */
+    public int totalMathItemQuestionCount() {
+        int total = 0;
+        for (HomeworkMathItem it : mathItems) {
+            total += Math.max(0, it.getQuestionCount());
+        }
+        return total;
+    }
+
+    public boolean isTimerEnabled() { return timerEnabled; }
+    public void setTimerEnabled(boolean timerEnabled) { this.timerEnabled = timerEnabled; }
+
+    public Integer getTimerMinutes() { return timerMinutes; }
+    public void setTimerMinutes(Integer timerMinutes) { this.timerMinutes = timerMinutes; }
 }

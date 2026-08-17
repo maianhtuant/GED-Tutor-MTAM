@@ -1,12 +1,24 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Quiz form')}"></head>
+<style>
+  .item-table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+  .item-table th, .item-table td { padding: 0.5rem; border-bottom: 1px solid #eee; text-align: left; }
+  .add-item-row { display: flex; gap: 0.5rem; align-items: end; margin-top: 0.5rem; }
+  .add-item-row > * { flex: 0 0 auto; }
+  .add-item-row .grow { flex-grow: 1; }
+  .add-item-row select, .add-item-row input {
+    padding: 0.5rem; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box;
+  }
+  .add-item-row select { width: 100%; }
+  .add-item-row input[type=number] { width: 6rem; }
+</style>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container narrow">
     <a th:href="@{/admin/homework}" class="back-link">&larr; Back</a>
-    <h1 th:text="${form.id != null ? 'Edit homework' : 'New homework'}">Homework</h1>
+    <h1 th:text="${form.id != null ? 'Edit quiz' : 'New quiz'}">Quiz</h1>
 
     <form th:action="${form.id != null} ? @{|/admin/homework/${form.id}/edit|} : @{/admin/homework/new}"
           th:object="${form}" method="post" class="card">
@@ -79,11 +91,142 @@
 
         <label>Total math questions per attempt
             <input type="number" th:field="*{mathQuestionCount}" min="1" max="200" value="40">
-            <small class="muted">Only used when "Math quiz" is checked.</small>
+            <small class="muted">Only used when "Math quiz" is checked and no specific items are added below.</small>
+        </label>
+
+        <!-- Starter math-quiz items (create flow only). Once the quiz exists,
+             items are managed in the "Math quiz items" section below instead. -->
+        <div th:if="${form.id == null}" style="border-top:1px solid #eee; padding-top:1rem;">
+            <h3 style="margin:0 0 0.25rem 0;">Math quiz items (optional)</h3>
+            <p class="muted" style="margin:0 0 0.5rem 0;">
+                Pick specific templates and how many questions from each, instead of the random
+                spread above. You can add more later too.
+            </p>
+
+            <div id="starterItems"></div>
+
+            <button type="button" id="addStarterRow" class="btn">+ Add another</button>
+        </div>
+
+        <hr style="margin: 1rem 0; border: none; border-top: 1px solid #eee;"/>
+
+        <label class="inline">
+            <input type="checkbox" th:field="*{timerEnabled}" id="timerToggle">
+            <strong>Timer</strong> — countdown while the student takes the quiz
+        </label>
+        <small class="muted">
+            When on, students see a countdown on the quiz page starting the moment they click
+            "Start Quiz". The attempt is automatically submitted when time runs out.
+        </small>
+
+        <label>Timer duration (minutes)
+            <input type="number" th:field="*{timerMinutes}" min="1" max="300" value="10">
+            <small class="muted">Only used when "Timer" is checked.</small>
         </label>
 
         <button type="submit" class="btn btn-primary">Save</button>
     </form>
+
+    <!-- Hidden template row for the starter math-quiz items above, used by the JS below. -->
+    <template id="starterRowTemplate">
+        <div class="starter-row" style="display:flex; gap:0.5rem; align-items:end; margin-bottom:0.5rem;">
+            <div style="flex:1;">
+                <label>Template</label>
+                <select name="starterTemplateId" required
+                        style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:6px;">
+                    <option th:each="t : ${templates}" th:value="${t.id}"
+                            th:text="${t.label} + ' (' + ${t.kind.name()} + ')'">Quadratic</option>
+                </select>
+            </div>
+            <div>
+                <label>Questions</label>
+                <input type="number" name="starterQuestionCount" value="5" min="1" max="100"
+                       style="width:6rem; padding:0.5rem; border:1px solid #ccc; border-radius:6px;"/>
+            </div>
+            <div>
+                <button type="button" class="btn remove-starter">Remove</button>
+            </div>
+        </div>
+    </template>
+
+    <script th:if="${form.id == null}">
+        (function () {
+            const container = document.getElementById('starterItems');
+            const tpl       = document.getElementById('starterRowTemplate');
+            const addBtn    = document.getElementById('addStarterRow');
+            if (!container || !tpl || !addBtn) return;
+
+            function addRow() {
+                const row = tpl.content.firstElementChild.cloneNode(true);
+                row.querySelector('.remove-starter').addEventListener('click', () => row.remove());
+                container.appendChild(row);
+            }
+            addBtn.addEventListener('click', addRow);
+        })();
+    </script>
+
+    <!-- Math-quiz items: pick specific templates + how many questions from
+         each, same "Items" pattern as the practice-set admin form. Only
+         shown once the homework exists (needs an id to attach items to). -->
+    <div th:if="${hw != null}" style="margin-top: 2rem;">
+        <h2>Math quiz items</h2>
+        <p class="muted">
+            Pick specific templates and how many questions to draw from each. If you add at
+            least one item here, it fully overrides "Total math questions per attempt" above —
+            attempts use exactly this recipe instead of a random spread across every template.
+        </p>
+
+        <table class="item-table">
+            <thead>
+                <tr><th>#</th><th>Template</th><th>Kind</th><th>Questions</th><th>Reorder</th><th>Remove</th></tr>
+            </thead>
+            <tbody>
+                <tr th:if="${#lists.isEmpty(hw.mathItems)}">
+                    <td colspan="6" class="muted">No items yet — every active template is used instead (see above).</td>
+                </tr>
+                <tr th:each="it, stat : ${hw.mathItems}">
+                    <td th:text="${stat.index + 1}">1</td>
+                    <td th:text="${it.template.label}">Template</td>
+                    <td th:text="${it.template.kind.name()}">QUADRATIC</td>
+                    <td th:text="${it.questionCount}">5</td>
+                    <td>
+                        <form th:action="@{|/admin/homework/${hw.id}/math-items/${it.id}/move|}" method="post" style="display:inline;">
+                            <input type="hidden" name="delta" value="-1"/>
+                            <button type="submit" class="link-btn" th:disabled="${stat.first}">↑</button>
+                        </form>
+                        <form th:action="@{|/admin/homework/${hw.id}/math-items/${it.id}/move|}" method="post" style="display:inline;">
+                            <input type="hidden" name="delta" value="1"/>
+                            <button type="submit" class="link-btn" th:disabled="${stat.last}">↓</button>
+                        </form>
+                    </td>
+                    <td>
+                        <form th:action="@{|/admin/homework/${hw.id}/math-items/${it.id}/delete|}" method="post"
+                              onsubmit="return confirm('Remove this item?');" style="display:inline;">
+                            <button type="submit" class="link-btn">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3 style="margin-top:1.25rem;">Add an item</h3>
+        <form th:action="@{|/admin/homework/${hw.id}/math-items|}" method="post" class="add-item-row">
+            <div class="grow">
+                <label>Template</label>
+                <select name="templateId" required>
+                    <option th:each="t : ${templates}" th:value="${t.id}"
+                            th:text="${t.label} + ' (' + ${t.kind.name()} + ')'">Quadratic</option>
+                </select>
+            </div>
+            <div>
+                <label>Questions</label>
+                <input type="number" name="questionCount" value="5" min="1" max="100">
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary">Add</button>
+            </div>
+        </form>
+    </div>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>

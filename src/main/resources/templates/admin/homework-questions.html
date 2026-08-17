@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments/layout :: head('Homework Questions')}"></head>
+<head th:replace="~{fragments/layout :: head('Quiz Questions')}"></head>
 <style>
   .section-box { background:#fff; border:1px solid #e5e7eb; border-radius:8px; padding:1.5rem; margin-bottom:2rem; }
   .section-box h2 { margin-top:0; font-size:1.1rem; color:#374151; }
@@ -13,7 +13,7 @@
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container">
-  <a th:href="@{/admin/homework}" class="back-link">&larr; Back to Homework</a>
+  <a th:href="@{/admin/homework}" class="back-link">&larr; Back to Quizzes</a>
   <h1 th:text="'Questions — ' + ${hw.title}">Questions</h1>
   <p class="muted" th:if="${hw.subject != null}"
      th:text="'Subject: ' + ${hw.subject.name}"></p>
@@ -48,7 +48,7 @@
           <td th:text="${q.correctAnswer}">Answer</td>
           <td>
             <form th:action="@{|/admin/homework/${hw.id}/questions/${q.id}/unlink|}" method="post"
-                  onsubmit="return confirm('Remove this question from the homework?');">
+                  onsubmit="return confirm('Remove this question from the quiz?');">
               <button type="submit" class="btn btn-danger" style="padding:0.2rem 0.65rem;font-size:0.82rem;">Remove</button>
             </form>
           </td>
@@ -97,7 +97,7 @@
 
   <div style="margin-top:1rem;">
     <a th:href="@{/admin/questions/new}" class="btn btn-primary">+ New question to bank</a>
-    <a th:href="@{/admin/homework}" class="btn" style="margin-left:0.5rem;">Back to Homework</a>
+    <a th:href="@{/admin/homework}" class="btn" style="margin-left:0.5rem;">Back to Quizzes</a>
   </div>
 </main>
 

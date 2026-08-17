@@ -4,10 +4,13 @@ import com.gedtutor.dto.GeneratedMathProblem;
 import com.gedtutor.dto.MathAnswerResult;
 import com.gedtutor.dto.MathQuizState;
 import com.gedtutor.model.Homework;
+import com.gedtutor.model.HomeworkMathItem;
 import com.gedtutor.model.MathProblemTemplate;
+import com.gedtutor.model.MathQuizAnswer;
 import com.gedtutor.model.QuizAttempt;
 import com.gedtutor.model.User;
 import com.gedtutor.repository.MathProblemTemplateRepository;
+import com.gedtutor.repository.MathQuizAnswerRepository;
 import com.gedtutor.repository.QuizAttemptRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Service;
@@ -39,15 +42,18 @@ public class MathQuizService {
     private final MathProblemTemplateRepository templateRepo;
     private final MathProblemService problemService;
     private final MathAnswerChecker checker;
+    private final MathQuizAnswerRepository answerRepo;
 
     public MathQuizService(QuizAttemptRepository attemptRepo,
                            MathProblemTemplateRepository templateRepo,
                            MathProblemService problemService,
-                           MathAnswerChecker checker) {
+                           MathAnswerChecker checker,
+                           MathQuizAnswerRepository answerRepo) {
         this.attemptRepo = attemptRepo;
         this.templateRepo = templateRepo;
         this.problemService = problemService;
         this.checker = checker;
+        this.answerRepo = answerRepo;
     }
 
     /**
@@ -59,8 +65,20 @@ public class MathQuizService {
         if (!hw.isMathQuiz()) {
             throw new IllegalArgumentException("Homework is not in math-quiz mode: " + hw.getId());
         }
-        int total = hw.getMathQuestionCount() != null && hw.getMathQuestionCount() > 0
-                ? hw.getMathQuestionCount() : 40;
+
+        // Admin picked specific templates + counts (like a practice set's
+        // items) → use that recipe exactly instead of the even spread below.
+        List<HomeworkMathItem> items = hw.getMathItems();
+        boolean useItems = items != null && !items.isEmpty();
+
+        int total;
+        if (useItems) {
+            total = 0;
+            for (HomeworkMathItem it : items) total += Math.max(0, it.getQuestionCount());
+        } else {
+            total = hw.getMathQuestionCount() != null && hw.getMathQuestionCount() > 0
+                    ? hw.getMathQuestionCount() : 40;
+        }
 
         long count = attemptRepo.countByStudentAndHomework(student, hw);
         QuizAttempt attempt = new QuizAttempt();
@@ -73,6 +91,20 @@ public class MathQuizService {
         MathQuizState state = new MathQuizState();
         state.attemptId = saved.getId();
         state.homeworkId = hw.getId();
+
+        if (useItems) {
+            for (HomeworkMathItem it : items) {
+                for (int q = 0; q < it.getQuestionCount(); q++) {
+                    state.problems.add(problemService.generate(it.getTemplate()));
+                    state.tokens.add(UUID.randomUUID().toString());
+                }
+            }
+            // Interleave kinds so the student doesn't see the same item's
+            // questions clustered together.
+            shuffleParallel(state.problems, state.tokens);
+            session.setAttribute(SESSION_KEY_PREFIX + saved.getId(), state);
+            return saved;
+        }
 
         List<MathProblemTemplate> templates =
                 templateRepo.findByActiveTrueOrderByIdAsc();
@@ -112,8 +144,13 @@ public class MathQuizService {
 
     /**
      * Grade one question by index. Returns {@code null} if the index/token
-     * don't line up with the stored state.
+     * don't line up with the stored state. Also persists a
+     * {@link MathQuizAnswer} row (question text, expected/given answer,
+     * correct flag) so admins can review exactly what the student saw and
+     * typed — the generated problem itself only ever lived in session state
+     * otherwise.
      */
+    @Transactional
     public MathAnswerResult gradeQuestion(HttpSession session, Long attemptId,
                                           int questionIndex, String token, String answer) {
         MathQuizState state = load(session, attemptId);
@@ -127,6 +164,18 @@ public class MathQuizService {
         MathAnswerResult result = checker.check(problem, answer);
         state.results.put(questionIndex, result);
         session.setAttribute(SESSION_KEY_PREFIX + attemptId, state);
+
+        attemptRepo.findById(attemptId).ifPresent(attempt -> {
+            MathQuizAnswer record = new MathQuizAnswer();
+            record.setAttempt(attempt);
+            record.setQuestionIndex(questionIndex);
+            record.setQuestionText(problem.questionText());
+            record.setExpectedAnswer(result.expected());
+            record.setStudentAnswer(result.submitted());
+            record.setCorrect(result.correct());
+            answerRepo.save(record);
+        });
+
         return result;
     }
 
