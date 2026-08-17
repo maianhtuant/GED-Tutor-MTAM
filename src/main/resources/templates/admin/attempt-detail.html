@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Attempt Overview')}"></head>
+<style>
+  .back-link { font-size: 0.85rem; color: #6b7280; text-decoration: none; }
+  .back-link:hover { text-decoration: underline; }
+  .summary-bar {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin: 1rem 0 1.5rem;
+    padding: 1rem 1.25rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+  }
+  .summary-bar .stat { display: flex; flex-direction: column; }
+  .summary-bar .stat .value { font-size: 1.4rem; font-weight: 700; }
+  .summary-bar .stat .label { font-size: 0.8rem; color: #6b7280; }
+  .qa-card {
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 0.85rem;
+  }
+  .qa-card.correct   { border-left: 4px solid #28a745; background: #f6fff8; }
+  .qa-card.incorrect { border-left: 4px solid #dc3545; background: #fff6f6; }
+  .qa-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 0.4rem;
+  }
+  .qa-index { font-weight: 600; color: #6b7280; font-size: 0.85rem; }
+  .qa-result { font-size: 0.85rem; font-weight: 700; }
+  .qa-result.correct   { color: #15803d; }
+  .qa-result.incorrect { color: #dc2626; }
+  .qa-question { font-size: 1.05rem; margin: 0.25rem 0 0.6rem; white-space: pre-wrap; }
+  .qa-answers { font-size: 0.92rem; }
+  .qa-answers div { margin: 0.15rem 0; }
+  .qa-explanation {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid #eee;
+    font-size: 0.88rem;
+    color: #555;
+  }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <a th:href="@{/admin/users}" class="back-link">&larr; Back to Users</a>
+  <h1 th:text="${detail.title}">Attempt</h1>
+  <p style="color:#6b7280;font-size:0.9rem;">
+    <span th:text="${detail.kind}">Quiz</span> &middot;
+    <span th:text="${detail.subjectName}">Subject</span> &middot;
+    Student: <span th:text="${detail.studentUsername}">student</span>
+  </p>
+
+  <div class="summary-bar">
+    <div class="stat">
+      <span class="value" th:text="${detail.score} + ' / ' + ${detail.total}">8 / 10</span>
+      <span class="label">Score</span>
+    </div>
+    <div class="stat">
+      <span class="value" th:text="${detail.percent} + '%'">80%</span>
+      <span class="label">Percentage</span>
+    </div>
+    <div class="stat" th:if="${detail.startedAt != null}">
+      <span class="value" style="font-size:1rem;" th:text="${#temporals.format(detail.startedAt, 'MMM d, yyyy h:mm a')}">Started</span>
+      <span class="label">Started</span>
+    </div>
+    <div class="stat" th:if="${detail.completedAt != null}">
+      <span class="value" style="font-size:1rem;" th:text="${#temporals.format(detail.completedAt, 'MMM d, yyyy h:mm a')}">Completed</span>
+      <span class="label">Completed</span>
+    </div>
+  </div>
+
+  <p class="muted" th:if="${#lists.isEmpty(detail.rows)}">No question-level detail was recorded for this attempt.</p>
+
+  <div th:each="row : ${detail.rows}"
+       th:classappend="${row.correct} ? ' correct' : ' incorrect'"
+       class="qa-card">
+    <div class="qa-header">
+      <span class="qa-index" th:text="'Question ' + (${row.index} + 1)">Question 1</span>
+      <span th:class="${row.correct} ? 'qa-result correct' : 'qa-result incorrect'"
+            th:text="${row.correct} ? 'Correct' : 'Incorrect'">Correct</span>
+    </div>
+    <p class="qa-question" th:text="${row.questionText}">Question text</p>
+    <div class="qa-answers">
+      <div>Student answered: <strong th:text="${#strings.isEmpty(row.studentAnswer) ? '(blank)' : row.studentAnswer}">answer</strong></div>
+      <div th:if="${!row.correct}">Expected: <strong th:text="${row.expectedAnswer}">expected</strong></div>
+    </div>
+    <div class="qa-explanation" th:if="${!#strings.isEmpty(row.explanation)}">
+      <strong>Explanation:</strong> <span th:text="${row.explanation}">explanation</span>
+    </div>
+  </div>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>

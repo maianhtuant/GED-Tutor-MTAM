@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('User Activity')}"></head>
+<style>
+  .back-link { font-size: 0.85rem; color: #6b7280; text-decoration: none; }
+  .back-link:hover { text-decoration: underline; }
+  .summary-bar {
+    display: flex;
+    gap: 2rem;
+    margin: 1rem 0 1.5rem;
+    padding: 1rem 1.25rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+  }
+  .summary-bar .stat { display: flex; flex-direction: column; }
+  .summary-bar .stat .value { font-size: 1.4rem; font-weight: 700; }
+  .summary-bar .stat .label { font-size: 0.8rem; color: #6b7280; }
+  .kind-badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+  }
+  .kind-quiz      { background: #dbeafe; color: #1d4ed8; }
+  .kind-math-quiz { background: #ede9fe; color: #6d28d9; }
+  .kind-practice  { background: #dcfce7; color: #15803d; }
+  .pct-good { color: #15803d; font-weight: 600; }
+  .pct-mid  { color: #b45309; font-weight: 600; }
+  .pct-low  { color: #dc2626; font-weight: 600; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <a th:href="@{/admin/users}" class="back-link">&larr; Back to Users</a>
+  <h1 th:text="${targetUser.username}">Username</h1>
+  <p style="color:#6b7280;font-size:0.9rem;" th:text="${targetUser.email}">email@example.com</p>
+
+  <div class="summary-bar" th:if="${summary != null}">
+    <div class="stat">
+      <span class="value" th:text="${summary.totalAttempts}">0</span>
+      <span class="label">Completed attempts</span>
+    </div>
+    <div class="stat">
+      <span class="value" th:text="${summary.avgPercent} + '%'">0%</span>
+      <span class="label">Average score</span>
+    </div>
+  </div>
+
+  <p class="muted" th:if="${summary == null or #lists.isEmpty(summary.entries)}">
+    No completed quiz, math-quiz, or practice attempts yet.
+  </p>
+
+  <table class="table" th:if="${summary != null and !#lists.isEmpty(summary.entries)}">
+    <thead>
+    <tr>
+      <th>Type</th>
+      <th>Subject</th>
+      <th>Title</th>
+      <th>Score</th>
+      <th>Completed</th>
+      <th>Overview</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="e : ${summary.entries}">
+      <td>
+        <span th:if="${e.kind == 'Quiz'}"      class="kind-badge kind-quiz"      th:text="${e.kind}">Quiz</span>
+        <span th:if="${e.kind == 'Math Quiz'}" class="kind-badge kind-math-quiz" th:text="${e.kind}">Math Quiz</span>
+        <span th:if="${e.kind == 'Practice'}"  class="kind-badge kind-practice"  th:text="${e.kind}">Practice</span>
+      </td>
+      <td th:text="${e.subjectName}">Subject</td>
+      <td th:text="${e.title}">Title</td>
+      <td>
+        <span th:text="${e.score} + ' / ' + ${e.total}">8 / 10</span>
+        &nbsp;
+        <span th:class="${e.percent >= 80} ? 'pct-good' : (${e.percent >= 50} ? 'pct-mid' : 'pct-low')"
+              th:text="'(' + ${e.percent} + '%)'">(80%)</span>
+      </td>
+      <td th:text="${#temporals.format(e.completedAt, 'MMM d, yyyy h:mm a')}">Jan 1, 2026</td>
+      <td><a th:href="${e.overviewUrl}" class="btn">View</a></td>
+    </tr>
+    </tbody>
+  </table>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+</body>
+</html>
