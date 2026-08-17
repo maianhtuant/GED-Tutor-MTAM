@@ -12,6 +12,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -32,7 +34,8 @@ public class DataSeeder {
                            MathProblemTemplateRepository mathTemplates,
                            QuestionRepository questions,
                            VideoUrlParser urlParser,
-                           PasswordEncoder encoder) {
+                           PasswordEncoder encoder,
+                           PlatformTransactionManager txManager) {
         return args -> {
             // --- Users ---
             User admin = users.findByUsername("admin").orElseGet(() -> {
@@ -210,23 +213,29 @@ public class DataSeeder {
                         List.of("She said, \"Hello.\"", "She said \"Hello\"", "She said; \"Hello.\"", "She said: Hello."),
                         "Dialogue uses a comma before the opening quotation mark.");
 
-                // ── Link Math questions to h1 ──
-                homework.findAll().stream()
-                        .filter(h -> h.getTitle().contains("Linear Equations"))
-                        .findFirst()
-                        .ifPresent(h -> {
-                            h.getQuestions().addAll(List.of(mq0, mq1, mq2, mq3, mq4, mq5, mq6, mq7, mq8, mq9));
-                            homework.save(h);
-                        });
+                // Linking questions touches homework.getQuestions(), a lazy collection —
+                // needs an active Hibernate session (open-in-view is disabled), so run
+                // it inside an explicit transaction rather than relying on the runner's
+                // (nonexistent) one.
+                new TransactionTemplate(txManager).executeWithoutResult(status -> {
+                    // ── Link Math questions to h1 ──
+                    homework.findAll().stream()
+                            .filter(h -> h.getTitle().contains("Linear Equations"))
+                            .findFirst()
+                            .ifPresent(h -> {
+                                h.getQuestions().addAll(List.of(mq0, mq1, mq2, mq3, mq4, mq5, mq6, mq7, mq8, mq9));
+                                homework.save(h);
+                            });
 
-                // ── Link Language Arts questions to h2 ──
-                homework.findAll().stream()
-                        .filter(h -> h.getTitle().contains("Reading Goals"))
-                        .findFirst()
-                        .ifPresent(h -> {
-                            h.getQuestions().addAll(List.of(lq0, lq1, lq2, lq3, lq4));
-                            homework.save(h);
-                        });
+                    // ── Link Language Arts questions to h2 ──
+                    homework.findAll().stream()
+                            .filter(h -> h.getTitle().contains("Reading Goals"))
+                            .findFirst()
+                            .ifPresent(h -> {
+                                h.getQuestions().addAll(List.of(lq0, lq1, lq2, lq3, lq4));
+                                homework.save(h);
+                            });
+                });
             }
         };
     }

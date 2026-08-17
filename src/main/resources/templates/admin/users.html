@@ -59,12 +59,41 @@
   .inline-form { display: inline; }
   .action-wrap { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
   .action-wrap input[type=password] { width: 130px; }
+  .activity-none { color: #9ca3af; font-size: 0.85rem; }
+  .activity-toggle { background: #eef2ff; color: #3730a3; border: 1px solid #c7d2fe; }
+  .activity-detail {
+    margin-top: 0.45rem;
+    padding: 0.5rem 0.65rem;
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 7px;
+    max-height: 180px;
+    overflow-y: auto;
+  }
+  .activity-row {
+    font-size: 0.8rem;
+    color: #374151;
+    padding: 0.2rem 0;
+    border-bottom: 1px solid #eee;
+  }
+  .activity-row:last-child { border-bottom: none; }
+  .activity-kind {
+    display: inline-block;
+    min-width: 68px;
+    font-weight: 600;
+    color: #4b5563;
+  }
+  .activity-score { font-weight: 600; margin-left: 0.3rem; }
+  .activity-date { color: #9ca3af; margin-left: 0.3rem; }
 </style>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container">
-  <h1>Users</h1>
+  <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+    <h1 style="margin:0;">Users</h1>
+    <a th:href="@{/admin/users/activity}" class="btn">View Activity by Subject →</a>
+  </div>
 
   <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
   <div class="alert alert-error"   th:if="${error}"   th:text="${error}"></div>
@@ -121,6 +150,7 @@
       <th>Role</th>
       <th>Status</th>
       <th>Joined</th>
+      <th>Activity</th>
       <th>Actions</th>
     </tr>
     </thead>
@@ -157,6 +187,28 @@
       <!-- Joined date -->
       <td style="font-size:0.85rem;color:#6b7280;"
           th:text="${#temporals.format(u.createdAt,'MMM d, yyyy')}">Jan 1</td>
+
+      <!-- Quiz / practice activity -->
+      <td th:with="act=${activity.get(u.id)}" style="min-width:190px;">
+        <span th:if="${act == null}" class="activity-none">No attempts yet</span>
+        <div th:if="${act != null}">
+          <button type="button" class="btn activity-toggle" th:attr="data-target=|activity-${u.id}|"
+                  style="font-size:0.8rem;padding:0.25rem 0.6rem;"
+                  th:text="${act.totalAttempts + (act.totalAttempts == 1 ? ' attempt' : ' attempts') + ' · avg ' + act.avgPercent + '%'}">
+            5 attempts · avg 76%
+          </button>
+          <div class="activity-detail" th:id="|activity-${u.id}|" style="display:none;">
+            <div th:each="e : ${act.entries}" class="activity-row">
+              <span class="activity-kind" th:text="${e.kind}">Quiz</span>
+              <span th:text="${e.title}">Title</span>
+              <span class="activity-score"
+                    th:text="${e.score + '/' + e.total + ' (' + e.percent + '%)'}">8/10 (80%)</span>
+              <span class="activity-date"
+                    th:text="${#temporals.format(e.completedAt,'MMM d, yyyy')}">Jan 1</span>
+            </div>
+          </div>
+        </div>
+      </td>
 
       <!-- Reset PW + Delete -->
       <td>
@@ -199,6 +251,16 @@
     });
     counter.textContent = q ? shown + ' of ' + total + ' users' : total + ' users';
     noUsers.style.display = (q && shown === 0) ? 'block' : 'none';
+  });
+})();
+
+(function () {
+  document.querySelectorAll('.activity-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const target = document.getElementById(btn.dataset.target);
+      if (!target) return;
+      target.style.display = (target.style.display === 'none') ? 'block' : 'none';
+    });
   });
 })();
 </script>

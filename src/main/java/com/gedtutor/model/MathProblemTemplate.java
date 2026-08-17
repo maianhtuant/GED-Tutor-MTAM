@@ -51,6 +51,18 @@ public class MathProblemTemplate {
     @Column(nullable = false)
     private Double tolerancePercent = 0.5;
 
+    /**
+     * Whether a rounded decimal hint is shown alongside exact fraction answers
+     * (e.g. "2/3 ≈ 0.67"). When false, only the exact fraction is shown/accepted
+     * unless the answer is inherently irrational, in which case it's always rounded.
+     */
+    @Column(nullable = false)
+    private boolean roundAnswer = true;
+
+    /** Number of decimal places to round displayed/graded answers to. */
+    @Column(nullable = false)
+    private int decimalPlaces = 2;
+
     /** Optional URL of the lesson video. */
     @Column(length = 500)
     private String videoUrl;
@@ -87,6 +99,12 @@ public class MathProblemTemplate {
 
     public Double getTolerancePercent() { return tolerancePercent; }
     public void setTolerancePercent(Double tolerancePercent) { this.tolerancePercent = tolerancePercent; }
+
+    public boolean isRoundAnswer() { return roundAnswer; }
+    public void setRoundAnswer(boolean roundAnswer) { this.roundAnswer = roundAnswer; }
+
+    public int getDecimalPlaces() { return decimalPlaces; }
+    public void setDecimalPlaces(int decimalPlaces) { this.decimalPlaces = decimalPlaces; }
 
     public String getVideoUrl() { return videoUrl; }
     public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }

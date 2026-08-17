@@ -4,20 +4,31 @@ import com.gedtutor.dto.GeneratedMathProblem;
 import com.gedtutor.dto.MathAnswerResult;
 import com.gedtutor.dto.PracticeRunState;
 import com.gedtutor.model.MathProblemTemplate;
+import com.gedtutor.model.PracticeAttempt;
 import com.gedtutor.model.PracticeSet;
 import com.gedtutor.model.PracticeSetItem;
+import com.gedtutor.model.User;
+import com.gedtutor.repository.PracticeAttemptRepository;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 /**
- * Coordinates a single student's walk through a practice set. State
- * lives entirely in the user's HTTP session under a per-set key. The
- * service is stateless itself.
+ * Coordinates a single student's walk through a practice set. Question
+ * state (problems, tokens, per-question results) lives entirely in the
+ * user's HTTP session under a per-set key — the service itself is
+ * stateless there. What IS persisted is a {@link PracticeAttempt} row per
+ * run: created when the run starts, finalized with a score once every
+ * question has been answered, so admins can see practice history
+ * alongside quiz history.
  *
- * <p>Lifecycle: {@code start} (generates every question once) → {@code grade}
- * per question (AJAX) → {@code summary} when {@link PracticeRunState#isDone()}.
+ * <p>Lifecycle: {@code start} (generates every question once, creates the
+ * PracticeAttempt row) → {@code grade} per question (AJAX; finalizes the
+ * attempt once {@link PracticeRunState#isDone()} becomes true) → {@code
+ * summary}.
  */
 @Service
 public class PracticeRunService {
@@ -27,21 +38,26 @@ public class PracticeRunService {
     private final PracticeSetService setService;
     private final MathProblemService problemService;
     private final MathAnswerChecker checker;
+    private final PracticeAttemptRepository attemptRepo;
 
     public PracticeRunService(PracticeSetService setService,
                               MathProblemService problemService,
-                              MathAnswerChecker checker) {
+                              MathAnswerChecker checker,
+                              PracticeAttemptRepository attemptRepo) {
         this.setService = setService;
         this.problemService = problemService;
         this.checker = checker;
+        this.attemptRepo = attemptRepo;
     }
 
     /**
      * Begin a fresh run, replacing any previous state for this set.
      * Generates every question for the entire set up front so the UI
-     * can render them all on one page.
+     * can render them all on one page, and creates the PracticeAttempt
+     * row that will hold the score once the run is complete.
      */
-    public PracticeRunState start(HttpSession session, Long setId) {
+    @Transactional
+    public PracticeRunState start(HttpSession session, Long setId, User student) {
         PracticeSet set = setService.findById(setId);
         PracticeRunState state = new PracticeRunState();
         state.practiceSetId = setId;
@@ -54,6 +70,16 @@ public class PracticeRunService {
                 state.tokens.add(UUID.randomUUID().toString());
             }
         }
+
+        if (!state.problems.isEmpty()) {
+            PracticeAttempt attempt = new PracticeAttempt();
+            attempt.setStudent(student);
+            attempt.setPracticeSet(set);
+            attempt.setTotalQuestions(state.problems.size());
+            PracticeAttempt saved = attemptRepo.save(attempt);
+            state.attemptId = saved.getId();
+        }
+
         store(session, state);
         return state;
     }
@@ -70,8 +96,10 @@ public class PracticeRunService {
     /**
      * Grade one question identified by its zero-based index. Returns
      * {@code null} if the index/token don't match anything (e.g. the
-     * session expired between load and submit).
+     * session expired between load and submit). Once the run is fully
+     * answered, saves the final score onto the backing PracticeAttempt.
      */
+    @Transactional
     public MathAnswerResult gradeQuestion(HttpSession session, Long setId,
                                           int questionIndex, String token, String answer) {
         PracticeRunState state = load(session, setId);
@@ -85,6 +113,16 @@ public class PracticeRunService {
         GeneratedMathProblem problem = state.problems.get(questionIndex);
         MathAnswerResult result = checker.check(problem, answer);
         state.results.put(questionIndex, result);
+
+        if (state.isDone() && !state.attemptSaved && state.attemptId != null) {
+            attemptRepo.findById(state.attemptId).ifPresent(attempt -> {
+                attempt.setScore(state.totalCorrect());
+                attempt.setCompletedAt(LocalDateTime.now());
+                attemptRepo.save(attempt);
+            });
+            state.attemptSaved = true;
+        }
+
         store(session, state);
         return result;
     }

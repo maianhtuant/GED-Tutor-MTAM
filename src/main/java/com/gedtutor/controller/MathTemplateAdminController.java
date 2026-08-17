@@ -228,6 +228,9 @@ public class MathTemplateAdminController {
         t.setLabel(form.getLabel());
         t.setVideoUrl(form.getVideoUrl());
         t.setActive(form.isActive());
+        t.setTolerancePercent(form.getTolerancePercent());
+        t.setRoundAnswer(form.isRoundAnswer());
+        t.setDecimalPlaces(form.getDecimalPlaces());
 
         if (form.getSubjectId() != null) {
             subjectRepo.findById(form.getSubjectId()).ifPresent(t::setSubject);
@@ -261,6 +264,9 @@ public class MathTemplateAdminController {
         form.setVideoUrl(t.getVideoUrl());
         form.setActive(t.isActive());
         form.setSubjectId(t.getSubject() != null ? t.getSubject().getId() : null);
+        form.setTolerancePercent(t.getTolerancePercent());
+        form.setRoundAnswer(t.isRoundAnswer());
+        form.setDecimalPlaces(t.getDecimalPlaces());
 
         FreeFormGenerator.Config cfg = parseConfig(t.getParametersJson());
         form.setTemplate(cfg.template);
@@ -294,6 +300,9 @@ public class MathTemplateAdminController {
         t.setLabel(form.getLabel());
         t.setVideoUrl(form.getVideoUrl());
         t.setActive(form.isActive());
+        t.setTolerancePercent(form.getTolerancePercent());
+        t.setRoundAnswer(form.isRoundAnswer());
+        t.setDecimalPlaces(form.getDecimalPlaces());
         if (form.getSubjectId() != null) {
             subjectRepo.findById(form.getSubjectId()).ifPresent(t::setSubject);
         } else {
@@ -318,6 +327,9 @@ public class MathTemplateAdminController {
         form.setVideoUrl(t.getVideoUrl());
         form.setActive(t.isActive());
         form.setSubjectId(t.getSubject() != null ? t.getSubject().getId() : null);
+        form.setTolerancePercent(t.getTolerancePercent());
+        form.setRoundAnswer(t.isRoundAnswer());
+        form.setDecimalPlaces(t.getDecimalPlaces());
         QuadraticSolver.Config cfg = parseQuadraticConfig(t.getParametersJson());
         form.setAMin(cfg.aMin);  form.setAMax(cfg.aMax);
         form.setBMin(cfg.bMin);  form.setBMax(cfg.bMax);

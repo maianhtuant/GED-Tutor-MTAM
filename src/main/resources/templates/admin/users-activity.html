@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Activity by Subject')}"></head>
+<style>
+  .back-link { font-size: 0.85rem; color: #6b7280; text-decoration: none; }
+  .back-link:hover { text-decoration: underline; }
+  .subject-matrix-wrap { overflow-x: auto; }
+  #subjectMatrix { border-collapse: collapse; min-width: 100%; }
+  #subjectMatrix th, #subjectMatrix td {
+    border: 1px solid #e5e7eb;
+    padding: 0.5rem 0.75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+  #subjectMatrix thead th {
+    background: #f9fafb;
+    font-size: 0.82rem;
+    color: #374151;
+    white-space: nowrap;
+    position: sticky;
+    top: 0;
+  }
+  #subjectMatrix tbody th {
+    background: #fff;
+    font-size: 0.88rem;
+    white-space: nowrap;
+    position: sticky;
+    left: 0;
+  }
+  .cell-empty { color: #d1d5db; font-size: 0.85rem; }
+  .cell-quiz, .cell-practice {
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+  .cell-quiz { color: #1d4ed8; }
+  .cell-practice { color: #15803d; margin-top: 0.15rem; }
+  .search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 1rem 0;
+  }
+  .search-wrap input {
+    padding: 0.5rem 0.85rem;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    font-size: 0.92rem;
+    width: 280px;
+  }
+  .user-count { font-size: 0.85rem; color: #9ca3af; }
+  .legend { font-size: 0.8rem; color: #6b7280; margin-top: 0.5rem; }
+  .legend span { display: inline-block; margin-right: 1.25rem; }
+</style>
+<body>
+<nav th:replace="~{fragments/layout :: nav}"></nav>
+
+<main class="container">
+  <a th:href="@{/admin/users}" class="back-link">&larr; Back to Users</a>
+  <h1>Activity by Subject</h1>
+  <p style="color:#6b7280;font-size:0.9rem;">
+    Each cell shows a student's quiz average (homework quizzes, including math-quiz mode)
+    and practice-set average for that subject, with how many completed runs the average is based on.
+  </p>
+
+  <div class="search-wrap">
+    <input type="text" id="userSearch" placeholder="Search users…" autocomplete="off">
+    <span class="user-count" id="userCount" th:text="${#lists.size(users)} + ' users'"></span>
+  </div>
+
+  <div class="subject-matrix-wrap">
+    <table id="subjectMatrix">
+      <thead>
+      <tr>
+        <th>User</th>
+        <th th:each="s : ${subjects}" th:text="${s.name}">Subject</th>
+      </tr>
+      </thead>
+      <tbody>
+      <tr th:each="u : ${users}"
+          th:data-search="${(u.username + ' ' + u.email + ' ' + (u.fullName ?: '')).toLowerCase()}">
+        <th scope="row" th:text="${u.username}">user</th>
+        <td th:each="s : ${subjects}"
+            th:with="userSubjects=${bySubject.get(u.id)}, cell=${userSubjects != null ? userSubjects.get(s.id) : null}">
+          <span th:if="${cell == null or cell.isEmpty()}" class="cell-empty">—</span>
+          <div th:if="${cell != null and !cell.isEmpty()}">
+            <div th:if="${cell.hasQuiz()}" class="cell-quiz"
+                 th:text="'Quiz: ' + ${cell.quizAvgPercent} + '% (' + ${cell.quizCount} + ')'">Quiz: 82% (5)</div>
+            <div th:if="${cell.hasPractice()}" class="cell-practice"
+                 th:text="'Practice: ' + ${cell.practiceAvgPercent} + '% (' + ${cell.practiceCount} + ')'">Practice: 75% (3)</div>
+          </div>
+        </td>
+      </tr>
+      </tbody>
+    </table>
+  </div>
+  <p id="noUsers" style="display:none;color:#888;font-style:italic;">No users match your search.</p>
+
+  <p class="legend">
+    <span><b style="color:#1d4ed8;">Quiz</b> — homework quizzes &amp; math-quizzes</span>
+    <span><b style="color:#15803d;">Practice</b> — curated practice sets</span>
+    <span>— means no completed runs in that subject yet</span>
+  </p>
+</main>
+
+<footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script>
+(function () {
+  const input   = document.getElementById('userSearch');
+  const counter = document.getElementById('userCount');
+  const noUsers = document.getElementById('noUsers');
+  const rows    = Array.from(document.querySelectorAll('#subjectMatrix tbody tr'));
+  const total   = rows.length;
+
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    let shown = 0;
+    rows.forEach(r => {
+      const match = !q || (r.dataset.search || '').includes(q);
+      r.style.display = match ? '' : 'none';
+      if (match) shown++;
+    });
+    counter.textContent = q ? shown + ' of ' + total + ' users' : total + ' users';
+    noUsers.style.display = (q && shown === 0) ? 'block' : 'none';
+  });
+})();
+</script>
+</body>
+</html>

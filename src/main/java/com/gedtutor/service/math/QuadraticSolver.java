@@ -58,6 +58,8 @@ public class QuadraticSolver implements MathProblemGenerator {
     public GeneratedMathProblem solve(MathProblemTemplate template, int a, int b, int c) {
         long discriminant = (long) b * b - 4L * a * c;
         double tol = template.getTolerancePercent() != null ? template.getTolerancePercent() : 0.5;
+        int decimalPlaces = template.getDecimalPlaces();
+        boolean roundAnswer = template.isRoundAnswer();
         String text = renderQuestion(a, b, c);
         String videoUrl = template.getVideoUrl();
         Long id = template.getId();
@@ -65,12 +67,13 @@ public class QuadraticSolver implements MathProblemGenerator {
         if (discriminant < 0) {
             return new GeneratedMathProblem(
                     id, text, AnswerShape.SCALAR, List.of(),
-                    "no real solution", NO_REAL_SOLUTION_ALIASES, tol, videoUrl);
+                    "no real solution", NO_REAL_SOLUTION_ALIASES, tol, videoUrl,
+                    decimalPlaces, roundAnswer);
         }
         if (discriminant == 0) {
             // Repeated root — but it's still a single answer.
             return GeneratedMathProblem.scalar(id, text,
-                    Rational.of(-b, 2L * a), tol, videoUrl);
+                    Rational.of(-b, 2L * a), tol, videoUrl, decimalPlaces, roundAnswer);
         }
         long perfectSqrt = integerSqrt(discriminant);
         List<Rational> roots;
@@ -84,7 +87,7 @@ public class QuadraticSolver implements MathProblemGenerator {
             double r2 = (-b + sqrt) / (2.0 * a);
             roots = sortedPair(Rational.ofDouble(r1), Rational.ofDouble(r2));
         }
-        return GeneratedMathProblem.unordered(id, text, roots, tol, videoUrl);
+        return GeneratedMathProblem.unordered(id, text, roots, tol, videoUrl, decimalPlaces, roundAnswer);
     }
 
     /** Render "Solve for x: ax^2 + bx + c = 0" with sane signs / unit coefficients. */

@@ -5,12 +5,16 @@ import com.gedtutor.dto.MathAnswerResult;
 import com.gedtutor.dto.PracticeRunState;
 import com.gedtutor.model.MathProblemTemplate;
 import com.gedtutor.model.PracticeSet;
+import com.gedtutor.model.User;
 import com.gedtutor.service.MathAnswerChecker;
 import com.gedtutor.service.MathProblemService;
 import com.gedtutor.service.PracticeRunService;
 import com.gedtutor.service.PracticeSetService;
+import com.gedtutor.service.UserService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -42,15 +46,18 @@ public class PracticeController {
     private final MathAnswerChecker checker;
     private final PracticeSetService practiceSetService;
     private final PracticeRunService runService;
+    private final UserService userService;
 
     public PracticeController(MathProblemService mathProblemService,
                               MathAnswerChecker checker,
                               PracticeSetService practiceSetService,
-                              PracticeRunService runService) {
+                              PracticeRunService runService,
+                              UserService userService) {
         this.mathProblemService = mathProblemService;
         this.checker = checker;
         this.practiceSetService = practiceSetService;
         this.runService = runService;
+        this.userService = userService;
     }
 
     // -----------------------------------------------------------------
@@ -120,8 +127,11 @@ public class PracticeController {
     }
 
     @PostMapping("/sets/{id}/start")
-    public String setRun(@PathVariable Long id, HttpSession session) {
-        PracticeRunState state = runService.start(session, id);
+    public String setRun(@PathVariable Long id,
+                         @AuthenticationPrincipal UserDetails principal,
+                         HttpSession session) {
+        User student = userService.findByUsername(principal.getUsername());
+        PracticeRunState state = runService.start(session, id, student);
         if (state.problems.isEmpty()) {
             return "redirect:/practice/sets/" + id;
         }

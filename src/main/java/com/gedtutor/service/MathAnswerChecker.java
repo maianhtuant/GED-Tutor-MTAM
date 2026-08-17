@@ -32,11 +32,21 @@ import java.util.Locale;
 public class MathAnswerChecker {
 
     /**
-     * Absolute tolerance floor used when relative tolerance would be too tight.
-     * Set to 0.005 so that a correctly-rounded 2-decimal-place answer is always
-     * accepted (e.g. student types -0.67 for exact answer -2/3 ≈ -0.6667).
+     * Absolute tolerance floor used when a problem doesn't ask for a rounded
+     * decimal answer — still needs a tiny epsilon to absorb floating-point noise.
      */
-    private static final double ABSOLUTE_FLOOR = 0.005;
+    private static final double EXACT_FLOOR = 1e-6;
+
+    /**
+     * Absolute tolerance floor for a rounded numeric answer, derived from the
+     * problem's decimal places so a correctly-rounded answer is always accepted
+     * (e.g. 2 decimal places → 0.005, so student typing -0.67 for exact answer
+     * -2/3 ≈ -0.6667 still matches).
+     */
+    private static double absoluteFloor(GeneratedMathProblem problem) {
+        if (!problem.roundAnswer()) return EXACT_FLOOR;
+        return 0.5 * Math.pow(10, -problem.decimalPlaces());
+    }
 
     public MathAnswerResult check(GeneratedMathProblem problem, String rawInput) {
         String submitted = rawInput == null ? "" : rawInput.trim();
@@ -95,10 +105,11 @@ public class MathAnswerChecker {
         for (Rational r : problem.expectedAnswers()) expected.add(r.toDouble());
 
         double tol = problem.tolerancePercent() / 100.0;
+        double absoluteFloor = absoluteFloor(problem);
         boolean ok = switch (problem.shape()) {
-            case SCALAR    -> within(parsed.get(0), expected.get(0), tol);
-            case ORDERED   -> matchOrdered(parsed, expected, tol);
-            case UNORDERED -> matchUnordered(parsed, expected, tol);
+            case SCALAR    -> within(parsed.get(0), expected.get(0), tol, absoluteFloor);
+            case ORDERED   -> matchOrdered(parsed, expected, tol, absoluteFloor);
+            case UNORDERED -> matchUnordered(parsed, expected, tol, absoluteFloor);
         };
 
         return ok
@@ -111,31 +122,40 @@ public class MathAnswerChecker {
     static String prettyExpected(GeneratedMathProblem p) {
         if (p.hasSpecialAnswer()) return p.specialAnswer();
         if (p.expectedAnswers().isEmpty()) return "(empty)";
+        int decimalPlaces = p.decimalPlaces();
+        boolean roundAnswer = p.roundAnswer();
         if (p.shape() == AnswerShape.ORDERED && p.expectedAnswers().size() == 2) {
-            return "(" + displayRational(p.expectedAnswers().get(0))
-                    + ", " + displayRational(p.expectedAnswers().get(1)) + ")";
+            return "(" + displayRational(p.expectedAnswers().get(0), decimalPlaces, roundAnswer)
+                    + ", " + displayRational(p.expectedAnswers().get(1), decimalPlaces, roundAnswer) + ")";
         }
-        if (p.expectedAnswers().size() == 1) return displayRational(p.expectedAnswers().get(0));
+        if (p.expectedAnswers().size() == 1) {
+            return displayRational(p.expectedAnswers().get(0), decimalPlaces, roundAnswer);
+        }
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < p.expectedAnswers().size(); i++) {
             if (i > 0) sb.append(p.shape() == AnswerShape.UNORDERED ? " or " : ", ");
-            sb.append(displayRational(p.expectedAnswers().get(i)));
+            sb.append(displayRational(p.expectedAnswers().get(i), decimalPlaces, roundAnswer));
         }
         return sb.toString();
     }
 
     /**
      * Display a rational answer in a student-friendly way.
-     * Integers show as plain numbers; fractions show as "n/d ≈ 0.67"
-     * so students know which decimal to enter.
+     * Integers show as plain numbers. Fractions show as "n/d ≈ 0.67" when
+     * {@code roundAnswer} is true (rounded to {@code decimalPlaces}), or as the
+     * bare exact fraction when false. Irrational approximations (denominator
+     * from {@code Rational.ofDouble}) always show a rounded decimal since
+     * there's no clean fraction to fall back to.
      */
-    static String displayRational(Rational r) {
-        if (r.isInteger()) return r.toString();
-        // Large denominators come from irrational approximations — already a decimal string.
-        if (r.denominator() > 1000) return r.toString();
-        // Show fraction + rounded decimal so student knows both forms are accepted.
-        String decimal = String.format("%.2f", r.toDouble());
-        return r + " ≈ " + decimal;
+    static String displayRational(Rational r, int decimalPlaces, boolean roundAnswer) {
+        if (r.isInteger()) return Long.toString(r.numerator());
+        if (r.denominator() > 1000) return formatDecimal(r.toDouble(), decimalPlaces);
+        if (!roundAnswer) return r.toString();
+        return r + " ≈ " + formatDecimal(r.toDouble(), decimalPlaces);
+    }
+
+    private static String formatDecimal(double value, int decimalPlaces) {
+        return String.format("%." + Math.max(0, decimalPlaces) + "f", value);
     }
 
     private static String countHint(AnswerShape shape, int needed) {
@@ -196,19 +216,21 @@ public class MathAnswerChecker {
         return Double.parseDouble(token);
     }
 
-    private static boolean within(double v, double exp, double relTol) {
-        double allowed = Math.max(Math.abs(exp) * relTol, ABSOLUTE_FLOOR);
+    private static boolean within(double v, double exp, double relTol, double absoluteFloor) {
+        double allowed = Math.max(Math.abs(exp) * relTol, absoluteFloor);
         return Math.abs(v - exp) <= allowed;
     }
 
-    private static boolean matchOrdered(List<Double> parsed, List<Double> expected, double relTol) {
+    private static boolean matchOrdered(List<Double> parsed, List<Double> expected, double relTol,
+                                        double absoluteFloor) {
         for (int i = 0; i < parsed.size(); i++) {
-            if (!within(parsed.get(i), expected.get(i), relTol)) return false;
+            if (!within(parsed.get(i), expected.get(i), relTol, absoluteFloor)) return false;
         }
         return true;
     }
 
-    private static boolean matchUnordered(List<Double> parsed, List<Double> expected, double relTol) {
+    private static boolean matchUnordered(List<Double> parsed, List<Double> expected, double relTol,
+                                          double absoluteFloor) {
         boolean[] used = new boolean[expected.size()];
         for (double v : parsed) {
             int best = -1;
@@ -217,7 +239,7 @@ public class MathAnswerChecker {
                 if (used[i]) continue;
                 double exp = expected.get(i);
                 double delta = Math.abs(v - exp);
-                double allowed = Math.max(Math.abs(exp) * relTol, ABSOLUTE_FLOOR);
+                double allowed = Math.max(Math.abs(exp) * relTol, absoluteFloor);
                 if (delta <= allowed && delta < bestDelta) {
                     best = i;
                     bestDelta = delta;

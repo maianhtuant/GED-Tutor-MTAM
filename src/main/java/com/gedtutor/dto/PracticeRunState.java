@@ -19,6 +19,14 @@ public class PracticeRunState implements Serializable {
 
     public Long practiceSetId;
 
+    /** Id of the persisted {@code PracticeAttempt} row backing this run,
+     *  so completion can update the right database record. */
+    public Long attemptId;
+
+    /** Set once the attempt's score/completedAt have been saved, so a
+     *  student re-viewing an already-finished run doesn't re-save it. */
+    public boolean attemptSaved = false;
+
     /** All generated problems in question order (size == totalQuestions). */
     public List<GeneratedMathProblem> problems = new ArrayList<>();
 

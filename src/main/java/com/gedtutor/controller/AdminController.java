@@ -9,6 +9,7 @@ import com.gedtutor.repository.MathProblemTemplateRepository;
 import com.gedtutor.service.HomeworkService;
 import com.gedtutor.service.QuizService;
 import com.gedtutor.service.SubjectService;
+import com.gedtutor.service.UserActivityService;
 import com.gedtutor.service.UserService;
 import com.gedtutor.service.VideoService;
 import jakarta.validation.Valid;
@@ -36,17 +37,20 @@ public class AdminController {
     private final QuizService quizService;
     private final SubjectService subjectService;
     private final MathProblemTemplateRepository mathTemplateRepository;
+    private final UserActivityService userActivityService;
 
     public AdminController(VideoService videoService, UserService userService,
                            HomeworkService homeworkService, QuizService quizService,
                            SubjectService subjectService,
-                           MathProblemTemplateRepository mathTemplateRepository) {
+                           MathProblemTemplateRepository mathTemplateRepository,
+                           UserActivityService userActivityService) {
         this.videoService = videoService;
         this.userService = userService;
         this.homeworkService = homeworkService;
         this.quizService = quizService;
         this.subjectService = subjectService;
         this.mathTemplateRepository = mathTemplateRepository;
+        this.userActivityService = userActivityService;
     }
 
     // ===================== Dashboard =====================
@@ -248,7 +252,21 @@ public class AdminController {
     public String users(Model model) {
         model.addAttribute("users", userService.findAll());
         model.addAttribute("roles", Role.values());
+        model.addAttribute("activity", userActivityService.summarizeAll());
         return "admin/users";
+    }
+
+    /**
+     * Matrix view: every user × every subject, showing quiz avg and
+     * practice avg (each with an attempt count) per subject. Complements
+     * the compact per-user "Activity" column on /admin/users.
+     */
+    @GetMapping("/users/activity")
+    public String usersActivityBySubject(Model model) {
+        model.addAttribute("users", userService.findAll());
+        model.addAttribute("subjects", subjectService.listAll());
+        model.addAttribute("bySubject", userActivityService.summarizeBySubject());
+        return "admin/users-activity";
     }
 
     @PostMapping("/users/{id}/role")

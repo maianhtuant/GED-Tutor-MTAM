@@ -22,4 +22,10 @@ public interface QuizAttemptRepository extends JpaRepository<QuizAttempt, Long> 
     @Modifying
     @Query("DELETE FROM QuizAttempt a WHERE a.homework = :homework")
     void deleteByHomework(@Param("homework") Homework homework);
+
+    /** Used by admin reporting — student/homework joined so the summary can
+     *  be built inside one transaction without lazy-loading later. */
+    @Query("SELECT a FROM QuizAttempt a JOIN FETCH a.student JOIN FETCH a.homework " +
+           "WHERE a.completedAt IS NOT NULL")
+    List<QuizAttempt> findAllCompletedWithStudentAndHomework();
 }

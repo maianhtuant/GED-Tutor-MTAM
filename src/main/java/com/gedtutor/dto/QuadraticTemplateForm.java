@@ -35,6 +35,19 @@ public class QuadraticTemplateForm {
 
     private boolean active = true;
 
+    /** Relative tolerance (%) used when grading numeric answers. */
+    @NotNull(message = "Tolerance is required")
+    @DecimalMin(value = "0.0", message = "Tolerance must be 0 or greater")
+    private Double tolerancePercent = 0.5;
+
+    /** Whether a rounded decimal hint is shown/accepted alongside exact fractions/roots. */
+    private boolean roundAnswer = true;
+
+    /** Decimal places to round displayed/graded answers to. */
+    @Min(value = 0, message = "Decimal places must be 0 or more")
+    @Max(value = 6, message = "Decimal places must be 6 or fewer")
+    private int decimalPlaces = 2;
+
     // ── Getters / Setters ────────────────────────────────────────────────────
 
     public Long getId()               { return id; }
@@ -69,4 +82,13 @@ public class QuadraticTemplateForm {
 
     public boolean isActive()         { return active; }
     public void setActive(boolean v)  { this.active = v; }
+
+    public Double getTolerancePercent()            { return tolerancePercent; }
+    public void setTolerancePercent(Double v)      { this.tolerancePercent = v; }
+
+    public boolean isRoundAnswer()                 { return roundAnswer; }
+    public void setRoundAnswer(boolean v)          { this.roundAnswer = v; }
+
+    public int getDecimalPlaces()                  { return decimalPlaces; }
+    public void setDecimalPlaces(int v)             { this.decimalPlaces = v; }
 }

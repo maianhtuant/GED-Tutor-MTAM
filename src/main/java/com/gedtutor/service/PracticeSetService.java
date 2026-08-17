@@ -4,6 +4,7 @@ import com.gedtutor.model.MathProblemTemplate;
 import com.gedtutor.model.PracticeSet;
 import com.gedtutor.model.PracticeSetItem;
 import com.gedtutor.repository.MathProblemTemplateRepository;
+import com.gedtutor.repository.PracticeAttemptRepository;
 import com.gedtutor.repository.PracticeSetItemRepository;
 import com.gedtutor.repository.PracticeSetRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -23,13 +24,16 @@ public class PracticeSetService {
     private final PracticeSetRepository setRepo;
     private final PracticeSetItemRepository itemRepo;
     private final MathProblemTemplateRepository templateRepo;
+    private final PracticeAttemptRepository attemptRepo;
 
     public PracticeSetService(PracticeSetRepository setRepo,
                               PracticeSetItemRepository itemRepo,
-                              MathProblemTemplateRepository templateRepo) {
+                              MathProblemTemplateRepository templateRepo,
+                              PracticeAttemptRepository attemptRepo) {
         this.setRepo = setRepo;
         this.itemRepo = itemRepo;
         this.templateRepo = templateRepo;
+        this.attemptRepo = attemptRepo;
     }
 
     public List<PracticeSet> listAll() {
@@ -50,8 +54,18 @@ public class PracticeSetService {
         return setRepo.save(set);
     }
 
+    /**
+     * Delete a practice set along with its dependent practice_attempts —
+     * otherwise the FK from practice_attempts.practice_set_id blocks the
+     * delete for any set a student has actually run (same pattern as
+     * {@code HomeworkService.delete} clearing quiz_attempts first).
+     * PracticeSetItems are cleaned up automatically via cascade/orphanRemoval.
+     */
     @Transactional
     public void delete(Long id) {
+        PracticeSet set = findById(id);
+        attemptRepo.deleteByPracticeSet(set);
+        attemptRepo.flush();
         setRepo.deleteById(id);
     }
 

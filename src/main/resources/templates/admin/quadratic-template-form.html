@@ -96,6 +96,33 @@
                    placeholder="https://youtube.com/..."/>
         </div>
 
+        <div style="display:flex; gap:1rem;">
+            <div class="form-group" style="flex:1">
+                <label for="tolerancePercent">Grading tolerance (%)</label>
+                <input id="tolerancePercent" type="number" step="0.1" min="0"
+                       th:field="*{tolerancePercent}"/>
+                <small class="text-muted">How far off a numeric answer can be and still count as correct — matters most for irrational roots.</small>
+                <span class="field-error" th:if="${#fields.hasErrors('tolerancePercent')}"
+                      th:errors="*{tolerancePercent}"></span>
+            </div>
+            <div class="form-group" style="flex:1">
+                <label for="decimalPlaces">Decimal places</label>
+                <input id="decimalPlaces" type="number" min="0" max="6"
+                       th:field="*{decimalPlaces}"/>
+                <small class="text-muted">How many decimals to round the answer to.</small>
+                <span class="field-error" th:if="${#fields.hasErrors('decimalPlaces')}"
+                      th:errors="*{decimalPlaces}"></span>
+            </div>
+        </div>
+
+        <div class="form-group" style="display:flex; align-items:center; gap:.5rem;">
+            <input id="roundAnswer" type="checkbox" th:field="*{roundAnswer}" style="width:auto;"/>
+            <label for="roundAnswer" style="margin:0;">Show/accept a rounded decimal answer</label>
+        </div>
+        <small class="text-muted" style="display:block; margin:-.5rem 0 1rem;">
+            When off, rational roots show as an exact fraction only. Irrational roots always show a rounded decimal (there's no clean fraction to fall back to).
+        </small>
+
         <div class="form-group" style="display:flex; align-items:center; gap:.5rem;">
             <input id="active" type="checkbox" th:field="*{active}" style="width:auto;"/>
             <label for="active" style="margin:0;">Active</label>
