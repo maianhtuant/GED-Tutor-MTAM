@@ -110,7 +110,7 @@
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script>
+<script th:attr="nonce=${_cspNonce}">
   /* Smart math rendering — only render parts of the question that are
      actually math; leave plain prose as text. Mirrors practice/set-run.html. */
 

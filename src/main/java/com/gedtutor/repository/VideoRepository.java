@@ -18,6 +18,8 @@ public interface VideoRepository extends JpaRepository<Video, Long> {
 
     long countBySubject(Subject subject);
 
+    List<Video> findBySubject(Subject subject);
+
     /** Eagerly fetches mathTemplate (LAZY) so the video-detail page can read it outside the session. */
     @Query("SELECT v FROM Video v LEFT JOIN FETCH v.mathTemplate WHERE v.id = :id")
     Optional<Video> findByIdWithTemplate(@Param("id") Long id);

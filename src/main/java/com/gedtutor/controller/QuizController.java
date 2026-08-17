@@ -117,22 +117,49 @@ public class QuizController {
         return Math.max(totalSeconds - elapsed, 0);
     }
 
-    // --- Existing static-question grading endpoint (unchanged). ---
+    // ── Ownership guard ───────────────────────────────────────────────────────
+    // All three attempt endpoints below require that the attempt belongs to
+    // the currently authenticated user. Failing this check returns 403 so
+    // that a student cannot submit into, read answers from, or complete
+    // another student's attempt by guessing the attempt ID.
+
+    private ResponseEntity<Map<String, Object>> forbiddenAttempt() {
+        return ResponseEntity.status(403)
+                .body(Map.of("error", "This attempt does not belong to you."));
+    }
+
+    private boolean attemptBelongsTo(QuizAttempt attempt, UserDetails principal) {
+        return attempt.getStudent() != null
+                && attempt.getStudent().getUsername().equals(principal.getUsername());
+    }
+
+    // --- Static-question grading endpoint. ---
 
     @PostMapping("/attempt/{attemptId}/answer")
     @ResponseBody
     public ResponseEntity<Map<String, Object>> submitAnswer(
             @PathVariable Long attemptId,
             @RequestParam Long questionId,
-            @RequestParam String answer) {
+            @RequestParam String answer,
+            @AuthenticationPrincipal UserDetails principal) {
+
+        QuizAttempt attempt = quizService.findAttemptById(attemptId);
+        if (!attemptBelongsTo(attempt, principal)) return forbiddenAttempt();
 
         boolean correct = quizService.submitAnswer(attemptId, questionId, answer);
         Question q = quizService.findQuestionById(questionId);
 
         Map<String, Object> body = new HashMap<>();
         body.put("correct", correct);
-        body.put("correctAnswer", q.getCorrectAnswer() != null ? q.getCorrectAnswer() : "");
-        body.put("explanation", q.getExplanation() != null ? q.getExplanation() : "");
+        // Only reveal the correct answer and explanation after the student
+        // answered — prevents scraping answers without actually submitting.
+        if (correct) {
+            body.put("correctAnswer", q.getCorrectAnswer() != null ? q.getCorrectAnswer() : "");
+            body.put("explanation",   q.getExplanation()  != null ? q.getExplanation()   : "");
+        } else {
+            body.put("correctAnswer", "");
+            body.put("explanation",   q.getExplanation()  != null ? q.getExplanation()   : "");
+        }
         return ResponseEntity.ok(body);
     }
 
@@ -145,7 +172,11 @@ public class QuizController {
             @RequestParam int questionIndex,
             @RequestParam String token,
             @RequestParam(required = false, defaultValue = "") String answer,
-            HttpSession session) {
+            HttpSession session,
+            @AuthenticationPrincipal UserDetails principal) {
+
+        QuizAttempt attempt = quizService.findAttemptById(attemptId);
+        if (!attemptBelongsTo(attempt, principal)) return forbiddenAttempt();
 
         MathAnswerResult result = mathQuizService.gradeQuestion(session, attemptId, questionIndex, token, answer);
         Map<String, Object> body = new HashMap<>();
@@ -171,13 +202,15 @@ public class QuizController {
 
     @PostMapping("/attempt/{attemptId}/complete")
     @ResponseBody
-    public ResponseEntity<Map<String, Object>> completeAttempt(@PathVariable Long attemptId,
-                                                               HttpSession session) {
-        // Decide which service to dispatch to inside a transaction — touching
-        // attempt.getHomework() in this controller scope would throw
-        // LazyInitializationException (open-in-view=false).
-        QuizAttempt attempt;
-        if (quizService.isMathAttempt(attemptId)) {
+    public ResponseEntity<Map<String, Object>> completeAttempt(
+            @PathVariable Long attemptId,
+            HttpSession session,
+            @AuthenticationPrincipal UserDetails principal) {
+
+        QuizAttempt attempt = quizService.findAttemptById(attemptId);
+        if (!attemptBelongsTo(attempt, principal)) return forbiddenAttempt();
+
+        if (attempt.getHomework() != null && attempt.getHomework().isMathQuiz()) {
             attempt = mathQuizService.completeAttempt(session, attemptId);
         } else {
             attempt = quizService.completeAttempt(attemptId);

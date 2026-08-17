@@ -19,7 +19,7 @@ public class RegistrationDto {
     private String fullName;
 
     @NotBlank
-    @Size(min = 6, max = 100)
+    @Size(min = 8, max = 100, message = "Password must be at least 8 characters.")
     private String password;
 
     @NotBlank

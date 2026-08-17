@@ -30,11 +30,23 @@
     <button th:each="s : ${subjects}"
             class="pill-tab"
             th:data-tab="${'tab-' + s.id}"
-            th:data-subject-id="${s.id}">
+            th:data-subject-id="${s.id}"
+            th:data-has-children="${childrenByParentId.containsKey(s.id) ? 'true' : 'false'}">
       <span th:text="${s.name}">Math</span>
       <span class="count" th:text="${videoCountBySubject[s.id] ?: 0}">0</span>
     </button>
   </div>
+
+  <!-- ── Child sub-tab bar (hidden unless a parent with children is active) -->
+  <div class="pill-tab-bar pill-tab-bar--child" id="childTabBar" style="display:none;margin-top:0.4rem;">
+    <!-- populated by JS based on which parent is active -->
+  </div>
+
+  <!-- Child subject data for JS (plain maps — no JPA entities) -->
+  <script th:inline="javascript" th:attr="nonce=${_cspNonce}">
+    const CHILDREN_BY_PARENT = /*[[${childrenForJs}]]*/ {};
+    const VIDEO_COUNT = /*[[${videoCountBySubject}]]*/ {};
+  </script>
 
   <!-- ════════════════════════════════════════════════════════════
        "All" panel — flat search across everything
@@ -83,13 +95,14 @@
   </div>
 
   <!-- ════════════════════════════════════════════════════════════
-       Per-subject panels with sub-subject sections + search
+       Per-subject panels (root subjects only here; children get
+       their own panels rendered below and shown via child sub-tabs)
        ════════════════════════════════════════════════════════════ -->
   <div th:each="s : ${subjects}"
        class="tab-panel"
        th:id="'tab-' + ${s.id}">
 
-    <!-- Search field -->
+    <!-- Search field (searches own + all children's videos) -->
     <div class="vid-search-bar">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" style="flex-shrink:0;opacity:.45">
         <circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/>
@@ -101,15 +114,9 @@
       <span class="vid-search-count" th:id="'count-' + ${s.id}"></span>
     </div>
 
-    <!-- No videos at all -->
-    <div th:if="${videosByCat[s.id] == null or #maps.isEmpty(videosByCat[s.id])}"
-         class="muted" style="padding:2rem 0;font-style:italic;">
-      No lessons in this subject yet.
-    </div>
-
-    <!-- Sub-subject sections -->
+    <!-- Direct videos for this parent subject (e.g. GED-level Math videos) -->
     <div th:if="${videosByCat[s.id] != null and !#maps.isEmpty(videosByCat[s.id])}"
-         th:id="'sections-' + ${s.id}">
+         th:id="'sections-' + ${s.id}" class="subject-sections">
       <div th:each="entry : ${videosByCat[s.id]}"
            class="cat-section"
            th:id="'cat-' + ${s.id} + '-' + ${entry.key}">
@@ -117,8 +124,7 @@
           <span th:text="${entry.key}">Category</span>
           <span class="cat-count" th:text="${#lists.size(entry.value)}">0</span>
         </h2>
-        <div class="grid"
-             th:id="'grid-' + ${s.id} + '-' + ${entry.key}">
+        <div class="grid" th:id="'grid-' + ${s.id} + '-' + ${entry.key}">
           <a th:each="v : ${entry.value}"
              th:href="@{|/videos/${v.id}|}"
              class="video-card card"
@@ -139,27 +145,176 @@
           </a>
         </div>
       </div>
-      <p class="no-results" th:id="'noResults-' + ${s.id}"
-         style="display:none;color:var(--ink-4);font-style:italic;padding:1.5rem 0;">
-        No lessons match your search.
-      </p>
     </div>
+
+    <!-- Child-subject panels rendered inside the parent panel -->
+    <div th:if="${childrenByParentId.containsKey(s.id)}"
+         th:id="'children-' + ${s.id}">
+      <div th:each="child : ${childrenByParentId[s.id]}"
+           class="child-panel"
+           th:id="'child-' + ${child.id}"
+           style="display:none;">
+
+        <div th:if="${videosByCat[child.id] == null or #maps.isEmpty(videosByCat[child.id])}"
+             class="muted" style="padding:2rem 0;font-style:italic;">
+          No lessons in this subject yet.
+        </div>
+
+        <div th:if="${videosByCat[child.id] != null and !#maps.isEmpty(videosByCat[child.id])}"
+             th:id="'sections-' + ${child.id}" class="subject-sections">
+          <div th:each="entry : ${videosByCat[child.id]}"
+               class="cat-section"
+               th:id="'cat-' + ${child.id} + '-' + ${entry.key}">
+            <h2 class="cat-title">
+              <span th:text="${entry.key}">Category</span>
+              <span class="cat-count" th:text="${#lists.size(entry.value)}">0</span>
+            </h2>
+            <div class="grid" th:id="'grid-' + ${child.id} + '-' + ${entry.key}">
+              <a th:each="v : ${entry.value}"
+                 th:href="@{|/videos/${v.id}|}"
+                 class="video-card card"
+                 th:data-title="${v.title?.toLowerCase()}"
+                 th:data-category="${v.category != null ? v.category?.toLowerCase() : 'general'}">
+                <div class="thumb"
+                     th:if="${v.provider == 'youtube' and v.embedId != null}"
+                     th:style="|background-image:url('https://img.youtube.com/vi/${v.embedId}/hqdefault.jpg')|"></div>
+                <div class="thumb thumb-blank" th:unless="${v.provider == 'youtube' and v.embedId != null}">
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" opacity=".4"><path d="M7 5l12 7-12 7V5z" fill="currentColor" stroke="none"/></svg>
+                </div>
+                <div class="card-body">
+                  <h3 style="margin:0 0 .35rem;font-size:.95rem;font-weight:500;line-height:1.35;"
+                      th:text="${v.title}">Title</h3>
+                  <p class="muted" style="font-size:.8rem;margin:0;"
+                     th:text="${#temporals.format(v.createdAt,'MMM d, yyyy')}">Date</p>
+                </div>
+              </a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div th:if="${(videosByCat[s.id] == null or #maps.isEmpty(videosByCat[s.id])) and !childrenByParentId.containsKey(s.id)}"
+         class="muted" style="padding:2rem 0;font-style:italic;">
+      No lessons in this subject yet.
+    </div>
+
+    <p class="no-results" th:id="'noResults-' + ${s.id}"
+       style="display:none;color:var(--ink-4);font-style:italic;padding:1.5rem 0;">
+      No lessons match your search.
+    </p>
   </div>
 
 </div><!-- .page -->
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script>
+<script th:attr="nonce=${_cspNonce}">
 (function () {
-    // ── Tab switching ──────────────────────────────────────────
-    const tabBar  = document.getElementById('tabBar');
-    const tabBtns = Array.from(tabBar.querySelectorAll('.pill-tab'));
-    const panels  = Array.from(document.querySelectorAll('.tab-panel'));
+    const tabBar      = document.getElementById('tabBar');
+    const childTabBar = document.getElementById('childTabBar');
+    const tabBtns     = Array.from(tabBar.querySelectorAll('.pill-tab'));
+    const panels      = Array.from(document.querySelectorAll('.tab-panel'));
+
+    // childrenByParent: { "parentId": [{id, name, count}, ...], ... }
+    // Thymeleaf serialises the Java Map<Long,List<Subject>> as a JS object.
+    // VIDEO_COUNT: { "subjectId": count, ... }
+
+    // Build a lookup: parentId (string) → array of {id, name, count}
+    const childMap = {};
+    if (typeof CHILDREN_BY_PARENT !== 'undefined') {
+        Object.keys(CHILDREN_BY_PARENT).forEach(pid => {
+            childMap[pid] = CHILDREN_BY_PARENT[pid].map(c => ({
+                id:    String(c.id),
+                name:  c.name,
+                count: (typeof VIDEO_COUNT !== 'undefined' && VIDEO_COUNT[c.id]) || 0
+            }));
+        });
+    }
+
+    // ── Activate a parent tab + optional child sub-tab ─────────
+    let activeParent = null;
+    let activeChild  = null;
+
+    function activateChild(parentId, childId) {
+        activeChild = childId;
+        // toggle child-tab buttons
+        Array.from(childTabBar.querySelectorAll('.pill-tab--child')).forEach(b => {
+            b.classList.toggle('active', b.dataset.childId === childId);
+        });
+        // show/hide child panels
+        const childrenWrap = document.getElementById('children-' + parentId);
+        if (!childrenWrap) return;
+        Array.from(childrenWrap.querySelectorAll('.child-panel')).forEach(p => {
+            p.style.display = (p.id === 'child-' + childId) ? '' : 'none';
+        });
+        // hide parent's own direct videos when a child is selected
+        const parentSections = document.getElementById('sections-' + parentId);
+        if (parentSections) parentSections.style.display = childId ? 'none' : '';
+        try { sessionStorage.setItem('videosChildTab_' + parentId, childId); } catch(_) {}
+    }
+
+    /** Creates a pill button safely — no innerHTML, so subject names can't inject markup. */
+    function makeChildBtn(label, count) {
+        const btn  = document.createElement('button');
+        const text = document.createTextNode(label + ' ');
+        const badge = document.createElement('span');
+        badge.className = 'count';
+        badge.textContent = count;
+        btn.appendChild(text);
+        btn.appendChild(badge);
+        return btn;
+    }
+
+    function buildChildBar(parentId) {
+        const children = childMap[parentId];
+        // Clear safely — no innerHTML
+        while (childTabBar.firstChild) childTabBar.removeChild(childTabBar.firstChild);
+        if (!children || children.length === 0) {
+            childTabBar.style.display = 'none';
+            return;
+        }
+
+        // "All" button shows parent's own content (if any) + no child selected
+        const allBtn = makeChildBtn('All', (typeof VIDEO_COUNT !== 'undefined' && VIDEO_COUNT[parentId]) || 0);
+        allBtn.className = 'pill-tab pill-tab--child';
+        allBtn.dataset.childId = '';
+        allBtn.addEventListener('click', () => activateChild(parentId, ''));
+        childTabBar.appendChild(allBtn);
+
+        children.forEach(c => {
+            const btn = makeChildBtn(c.name, c.count);
+            btn.className = 'pill-tab pill-tab--child';
+            btn.dataset.childId = c.id;
+            btn.addEventListener('click', () => activateChild(parentId, c.id));
+            childTabBar.appendChild(btn);
+        });
+
+        childTabBar.style.display = '';
+
+        // restore saved child tab or default to first child
+        let savedChild = '';
+        try { savedChild = sessionStorage.getItem('videosChildTab_' + parentId) || ''; } catch(_) {}
+        // verify saved child still exists
+        if (savedChild && !children.find(c => c.id === savedChild)) savedChild = '';
+        activateChild(parentId, savedChild);
+    }
 
     function activate(tabId) {
         tabBtns.forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
         panels.forEach(p  => p.classList.toggle('active', p.id === tabId));
+
+        // child sub-tab bar
+        if (tabId === 'all' || !tabId.startsWith('tab-')) {
+            childTabBar.style.display = 'none';
+            while (childTabBar.firstChild) childTabBar.removeChild(childTabBar.firstChild);
+            activeParent = null;
+        } else {
+            const parentId = tabId.replace('tab-', '');
+            activeParent = parentId;
+            buildChildBar(parentId);
+        }
+
         try { sessionStorage.setItem('videosTab', tabId); } catch(_) {}
     }
 
@@ -194,20 +349,19 @@
         });
     }
 
-    // ── Search: per-subject tabs ───────────────────────────────
+    // ── Search: per-subject tabs (searches own + visible child sections) ──
     document.querySelectorAll('.tab-panel[id^="tab-"]').forEach(panel => {
-        const sid      = panel.id.replace('tab-', '');
-        const input    = document.getElementById('search-' + sid);
-        const counter  = document.getElementById('count-' + sid);
-        const noRes    = document.getElementById('noResults-' + sid);
-        const sections = panel.querySelectorAll('.cat-section');
-        if (!input || sections.length === 0) return;
+        const sid   = panel.id.replace('tab-', '');
+        const input = document.getElementById('search-' + sid);
+        const noRes = document.getElementById('noResults-' + sid);
+        if (!input) return;
 
         input.addEventListener('input', () => {
             const q = input.value.trim().toLowerCase();
             let totalShown = 0;
 
-            sections.forEach(section => {
+            // search all cat-sections within this panel (own + children)
+            panel.querySelectorAll('.cat-section').forEach(section => {
                 const cards = Array.from(section.querySelectorAll('.video-card'));
                 let sectionShown = 0;
                 cards.forEach(c => {
@@ -221,7 +375,18 @@
                 totalShown += sectionShown;
             });
 
-            counter.textContent = q ? totalShown + ' result' + (totalShown !== 1 ? 's' : '') : '';
+            // show all child panels while searching
+            if (q) {
+                panel.querySelectorAll('.child-panel').forEach(p => p.style.display = '');
+                const parentSections = document.getElementById('sections-' + sid);
+                if (parentSections) parentSections.style.display = '';
+            } else if (activeParent === sid) {
+                // restore child tab selection
+                activateChild(sid, activeChild || '');
+            }
+
+            const counter = document.getElementById('count-' + sid);
+            if (counter) counter.textContent = q ? totalShown + ' result' + (totalShown !== 1 ? 's' : '') : '';
             if (noRes) noRes.style.display = (q && totalShown === 0) ? 'block' : 'none';
         });
     });

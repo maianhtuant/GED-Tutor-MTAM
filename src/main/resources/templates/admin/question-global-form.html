@@ -89,7 +89,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script th:inline="javascript">
+<script th:inline="javascript" th:attr="nonce=${_cspNonce}">
     const savedType = /*[[${form.type}]]*/ null;
 
     // Same logic as the per-homework question form: disable hidden sections

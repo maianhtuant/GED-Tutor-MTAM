@@ -93,7 +93,7 @@
         </div>
         <div>
           <label>Password *</label>
-          <input type="password" name="password" required minlength="6" placeholder="Min 6 chars">
+          <input type="password" name="password" required minlength="8" placeholder="Min 8 chars">
         </div>
         <div>
           <label>Role *</label>
@@ -179,7 +179,7 @@
         <div class="action-wrap">
           <form th:action="@{|/admin/users/${u.id}/reset-password|}" method="post" class="inline-form">
             <div class="action-wrap">
-              <input type="password" name="newPassword" placeholder="New password" required minlength="6">
+              <input type="password" name="newPassword" placeholder="New password" required minlength="8">
               <button type="submit" class="btn" style="font-size:0.8rem;padding:0.28rem 0.65rem;">Reset PW</button>
             </div>
           </form>
@@ -197,7 +197,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script>
+<script th:attr="nonce=${_cspNonce}">
 (function () {
   const input   = document.getElementById('userSearch');
   const counter = document.getElementById('userCount');

@@ -85,3 +85,21 @@ ALTER TABLE math_problem_templates DROP CONSTRAINT IF EXISTS math_problem_templa
 -- =====================================================================
 ALTER TABLE homework ADD COLUMN IF NOT EXISTS math_quiz BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE homework ADD COLUMN IF NOT EXISTS math_question_count INTEGER;
+
+-- =====================================================================
+-- Subject hierarchy (parent/child subjects)
+-- Adds a self-referential parent_id FK so subjects can be grouped.
+-- Run AFTER restarting Spring Boot so Hibernate has auto-created the
+-- parent_id column (ddl-auto=update will add it automatically).
+--
+-- After restart, run this to set the college-math subjects as children
+-- of the existing "Math" subject. Adjust IDs if they differ in your DB.
+-- =====================================================================
+-- Find Math subject id first:
+--   SELECT id FROM subjects WHERE name = 'Math';
+-- Then set children (replace 1 with actual Math subject id if different):
+-- UPDATE subjects SET parent_id = (SELECT id FROM subjects WHERE name = 'Math')
+--   WHERE name IN ('Calculus 1','Calculus 2','Calculus 3','Linear Algebra','Differential Equations');
+--
+-- The DataSeeder handles this automatically on startup for fresh installs.
+-- For existing databases, run the UPDATE above once after deploying this version.

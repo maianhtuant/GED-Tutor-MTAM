@@ -69,7 +69,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script>
+<script th:attr="nonce=${_cspNonce}">
     document.addEventListener("DOMContentLoaded", function () {
         const raw     = document.getElementById("math-raw").textContent.trim();
         const display = document.getElementById("math-display");

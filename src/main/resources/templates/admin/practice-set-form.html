@@ -74,15 +74,23 @@
     </div>
   </form>
 
-  <!-- Hidden template row for the starter-items section, used by the JS below. -->
+  <!-- Subject filter for starter rows (new-set creation, client-side only). -->
+  <div th:if="${form.id == null}" style="margin-bottom:0.5rem;">
+    <label style="font-weight:500;">Filter templates by subject</label>
+    <select id="starterSubjectFilter"
+            style="width:100%; max-width:360px; padding:0.5rem; border:1px solid #ccc; border-radius:6px;">
+      <option value="">— All subjects —</option>
+      <option th:each="s : ${subjects}" th:value="${s.id}" th:text="${s.name}">Math</option>
+    </select>
+  </div>
+
+  <!-- Hidden template row for the starter-items section — options injected by JS. -->
   <template id="starterRowTemplate">
     <div class="starter-row" style="display:flex; gap:0.5rem; align-items:end; margin-bottom:0.5rem;">
       <div style="flex:1;">
         <label>Template</label>
         <select name="starterTemplateId" required
                 style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:6px;">
-          <option th:each="t : ${templates}" th:value="${t.id}"
-                  th:text="${t.label} + ' (' + ${t.kind.name()} + ')'">Quadratic</option>
         </select>
       </div>
       <div>
@@ -96,20 +104,55 @@
     </div>
   </template>
 
-  <script th:if="${form.id == null}">
+  <!--/* Template data serialised for JS — rendered once by Thymeleaf. */-->
+  <script th:if="${form.id == null}" th:inline="javascript" th:attr="nonce=${_cspNonce}">
+    /*<![CDATA[*/
+    const TMPL_DATA = /*[[${templates}]]*/ [];
+    /*]]>*/
+  </script>
+
+  <script th:if="${form.id == null}" th:attr="nonce=${_cspNonce}">
     (function () {
-      const container = document.getElementById('starterItems');
-      const tpl       = document.getElementById('starterRowTemplate');
-      const addBtn    = document.getElementById('addStarterRow');
+      const container     = document.getElementById('starterItems');
+      const tplEl         = document.getElementById('starterRowTemplate');
+      const addBtn        = document.getElementById('addStarterRow');
+      const subjectFilter = document.getElementById('starterSubjectFilter');
+
+      // Build <option> list filtered by subject id string ('' = all).
+      function buildOptions(filterSubjectId) {
+        return TMPL_DATA
+          .filter(t => !filterSubjectId ||
+                       String(t.subject != null ? t.subject.id : '') === String(filterSubjectId))
+          .map(t => {
+            const opt = document.createElement('option');
+            opt.value = t.id;
+            opt.textContent = t.label + ' (' + t.kind + ')';
+            opt.dataset.subjectId = t.subject != null ? t.subject.id : '';
+            return opt;
+          });
+      }
+
+      function populateSelect(sel) {
+        sel.innerHTML = '';
+        buildOptions(subjectFilter.value).forEach(o => sel.appendChild(o));
+      }
 
       function addRow() {
-        const row = tpl.content.firstElementChild.cloneNode(true);
+        const row = tplEl.content.firstElementChild.cloneNode(true);
+        const sel = row.querySelector('select[name="starterTemplateId"]');
+        populateSelect(sel);
         row.querySelector('.remove-starter').addEventListener('click', () => row.remove());
         container.appendChild(row);
       }
+
+      // Re-populate all existing selects when filter changes.
+      subjectFilter.addEventListener('change', () => {
+        container.querySelectorAll('select[name="starterTemplateId"]')
+          .forEach(sel => populateSelect(sel));
+      });
+
       addBtn.addEventListener('click', addRow);
-      // Start with one row visible.
-      addRow();
+      addRow(); // Start with one row.
     })();
   </script>
 
@@ -152,25 +195,66 @@
     </table>
 
     <h3 style="margin-top:1.25rem;">Add an item</h3>
-    <form th:action="@{|/admin/practice-sets/${set.id}/items|}" method="post" class="add-item-row">
-      <div class="grow">
-        <label>Template</label>
-        <select name="templateId" required>
-          <option th:each="t : ${templates}" th:value="${t.id}"
-                  th:text="${t.label} + ' (' + ${t.kind.name()} + ')'">Quadratic</option>
+    <form th:action="@{|/admin/practice-sets/${set.id}/items|}" method="post">
+
+      <!-- Subject filter (client-side only — does not submit) -->
+      <div style="margin-bottom:0.5rem;">
+        <label style="font-weight:500;">Filter by subject</label>
+        <select id="addItemSubjectFilter"
+                style="width:100%; max-width:360px; padding:0.5rem; border:1px solid #ccc; border-radius:6px;">
+          <option value="">— All subjects —</option>
+          <option th:each="s : ${subjects}" th:value="${s.id}" th:text="${s.name}">Math</option>
         </select>
       </div>
-      <div>
-        <label>Questions</label>
-        <input type="number" name="questionCount" value="5" min="1" max="100"
-               style="width:6rem; padding:0.5rem; border:1px solid #ccc; border-radius:6px;"/>
-      </div>
-      <div>
-        <button type="submit" class="btn btn-primary">Add</button>
+
+      <div class="add-item-row">
+        <div class="grow">
+          <label>Template</label>
+          <select id="addItemTemplate" name="templateId" required
+                  style="width:100%; padding:0.5rem; border:1px solid #ccc; border-radius:6px;">
+            <option th:each="t : ${templates}"
+                    th:value="${t.id}"
+                    th:text="${t.label} + ' (' + ${t.kind.name()} + ')'"
+                    th:attr="data-subject-id=${t.subject != null ? t.subject.id : ''}">Quadratic</option>
+          </select>
+        </div>
+        <div>
+          <label>Questions</label>
+          <input type="number" name="questionCount" value="5" min="1" max="100"
+                 style="width:6rem; padding:0.5rem; border:1px solid #ccc; border-radius:6px;"/>
+        </div>
+        <div>
+          <button type="submit" class="btn btn-primary">Add</button>
+        </div>
       </div>
     </form>
   </div>
 </main>
+
+<script th:if="${set != null}" th:attr="nonce=${_cspNonce}">
+(function () {
+  const filterSel   = document.getElementById('addItemSubjectFilter');
+  const templateSel = document.getElementById('addItemTemplate');
+  const allOptions  = Array.from(templateSel.options);
+
+  function applyFilter() {
+    const chosen = filterSel.value; // '' = show all
+    let firstVisible = null;
+    allOptions.forEach(opt => {
+      const match = !chosen || opt.dataset.subjectId === chosen;
+      opt.hidden   = !match;
+      opt.disabled = !match;
+      if (match && firstVisible === null) firstVisible = opt;
+    });
+    // If currently selected option is now hidden, jump to first visible
+    if (templateSel.selectedOptions[0]?.hidden && firstVisible) {
+      templateSel.value = firstVisible.value;
+    }
+  }
+
+  filterSel.addEventListener('change', applyFilter);
+})();
+</script>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 </body>

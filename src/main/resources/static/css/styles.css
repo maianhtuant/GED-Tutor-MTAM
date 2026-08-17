@@ -635,6 +635,18 @@ input:focus, textarea:focus, select:focus { border-color: var(--ink-3); }
 .tab-panel { display: none; }
 .tab-panel.active { display: block; }
 
+/* Child sub-tab bar — appears below the main tab bar when a parent with children is active */
+.pill-tab-bar--child {
+  padding: 10px 0 14px;
+  margin-top: -14px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 28px;
+}
+.pill-tab--child {
+  font-size: 12.5px;
+  padding: 5px 13px;
+}
+
 .vid-search-bar {
   display: flex; align-items: center; gap: 10px; margin-bottom: 24px;
 }
