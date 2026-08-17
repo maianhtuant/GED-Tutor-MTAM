@@ -104,7 +104,7 @@
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
 
-<script>
+<script th:attr="nonce=${_cspNonce}">
 (function () {
   const input   = document.getElementById('userSearch');
   const counter = document.getElementById('userCount');

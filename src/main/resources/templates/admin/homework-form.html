@@ -149,7 +149,7 @@
         </div>
     </template>
 
-    <script th:if="${form.id == null}">
+    <script th:if="${form.id == null}" th:attr="nonce=${_cspNonce}">
         (function () {
             const container = document.getElementById('starterItems');
             const tpl       = document.getElementById('starterRowTemplate');
@@ -230,7 +230,7 @@
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
-<script th:attr="nonce=${_cspNonce}">
+<script>
     const CATEGORIES = {
         'Math':          ['GED', 'Pre-Calculus', 'Calculus 1', 'Calculus 2', 'Calculus 3', 'Linear Algebra', 'Differential Equations', 'Statistics', 'Trigonometry'],
         'Science':       ['GED', 'Biology', 'Chemistry', 'Physics', 'Earth Science'],
