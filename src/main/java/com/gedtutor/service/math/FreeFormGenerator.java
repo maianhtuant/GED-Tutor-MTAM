@@ -20,6 +20,16 @@ import static com.gedtutor.service.math.MathConfigSupport.randomInRange;
  * assigned one random integer drawn from [minValue, maxValue]. The same
  * placeholder reused multiple times always receives the same value.
  *
+ * <h3>Per-placeholder ranges: {@code {name:min-max}}</h3>
+ * <p>A placeholder may optionally carry its own inclusive range, overriding
+ * the template's global [minValue, maxValue] for that one name — e.g.
+ * <code>{a:1-50}.{b:1-100}</code> draws <code>a</code> from 1–50 and
+ * <code>b</code> from 1–100 independently. Only the <em>first</em> occurrence
+ * of a given name needs (or uses) the range suffix; every later occurrence
+ * of the same name — with or without a suffix — reuses the value already
+ * assigned. A bare <code>{name}</code> with no suffix still falls back to
+ * the template-level minValue/maxValue exactly as before.
+ *
  * <h3>Special token: {@code {+-}}</h3>
  * <p>Writing <code>{+-}</code> anywhere in the template randomly inserts either
  * <code>+</code> or <code>−</code> each time a problem is generated.  A sign
@@ -49,8 +59,13 @@ import static com.gedtutor.service.math.MathConfigSupport.randomInRange;
 @Service
 public class FreeFormGenerator implements MathProblemGenerator {
 
-    /** Matches any {word} placeholder — letters, digits, underscores after the first letter. */
-    private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z_]\\w*)\\}");
+    /**
+     * Matches any {word} placeholder — letters, digits, underscores after the
+     * first letter — with an optional {@code :min-max} range suffix, e.g.
+     * {@code {a}} or {@code {a:1-50}}. Group 1 is the name; groups 2/3 are
+     * the range bounds when present, else null.
+     */
+    private static final Pattern PLACEHOLDER = Pattern.compile("\\{([A-Za-z_]\\w*)(?::(\\d+)-(\\d+))?\\}");
 
     /** Special token that renders as + or − and exposes sign variable {@code s}. */
     private static final String SIGN_TOKEN = "{+-}";
@@ -84,17 +99,32 @@ public class FreeFormGenerator implements MathProblemGenerator {
             workingTemplate = workingTemplate.replace(SIGN_TOKEN, plus ? "+" : "−"); // − (minus sign)
         }
 
-        // ── Collect unique {name} placeholders ───────────────────────────────
+        // ── Collect + substitute {name} / {name:min-max} placeholders in one pass ──
+        // Single-pass matcher substitution (rather than collect-then-string-replace)
+        // so that a later bare {name} correctly reuses the value assigned to an
+        // earlier {name:min-max} occurrence, and vice versa — a plain string
+        // replace keyed on "{name}" would miss occurrences that carry a range
+        // suffix.
         Matcher m = PLACEHOLDER.matcher(workingTemplate);
+        StringBuilder exprBuilder = new StringBuilder();
         while (m.find()) {
-            assignments.computeIfAbsent(m.group(1), k -> randomInRange(min, max));
+            String name = m.group(1);
+            Integer value = assignments.get(name);
+            if (value == null) {
+                int lo = min, hi = max;
+                if (m.group(2) != null && m.group(3) != null) {
+                    int rangeLo = Integer.parseInt(m.group(2));
+                    int rangeHi = Integer.parseInt(m.group(3));
+                    lo = rangeLo;
+                    hi = Math.max(rangeLo + 1, rangeHi); // guard: max must be > min
+                }
+                value = randomInRange(lo, hi);
+                assignments.put(name, value);
+            }
+            m.appendReplacement(exprBuilder, Matcher.quoteReplacement(String.valueOf(value)));
         }
-
-        // Substitute every {placeholder} with its assigned integer
-        String expression = workingTemplate;
-        for (Map.Entry<String, Integer> entry : assignments.entrySet()) {
-            expression = expression.replace("{" + entry.getKey() + "}", String.valueOf(entry.getValue()));
-        }
+        m.appendTail(exprBuilder);
+        String expression = exprBuilder.toString();
 
         double tol = template.getTolerancePercent() != null ? template.getTolerancePercent() : 0.0;
 
