@@ -361,6 +361,10 @@ public class AdminController {
     @GetMapping("/homework")
     public String homeworkList(Model model) {
         model.addAttribute("homeworkList", homeworkService.listAll());
+        model.addAttribute("subjects", subjectService.listActive());
+        model.addAttribute("videos", videoService.listAll());
+        model.addAttribute("templates", mathTemplateRepository.findByActiveTrueOrderByIdAsc());
+        model.addAttribute("form", new HomeworkForm());
         return "admin/homework";
     }
 

@@ -43,13 +43,15 @@ public class HomeworkForm {
     private Integer mathQuestionCount = 40;
 
     /**
-     * When true, a countdown timer runs while the student takes this quiz
-     * and the attempt auto-submits when time runs out.
+     * @deprecated no longer bound to a UI control — {@link #timerMinutes} alone
+     * now drives whether a timer is active (0/null = unlimited, no timer).
+     * Kept only so old form posts with this field don't break.
      */
+    @Deprecated
     private boolean timerEnabled = false;
 
-    /** Timer duration in minutes, used when {@link #timerEnabled} is true. */
-    private Integer timerMinutes = 10;
+    /** Timer duration in minutes. 0 or null = unlimited (no timer). */
+    private Integer timerMinutes = 0;
 
     public HomeworkForm() {}
 

@@ -21,6 +21,7 @@ import com.gedtutor.repository.QuizAnswerRepository;
 import com.gedtutor.repository.QuizAttemptRepository;
 import com.gedtutor.repository.VideoRepository;
 import jakarta.persistence.EntityNotFoundException;
+import org.hibernate.Hibernate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -70,8 +71,18 @@ public class HomeworkService {
         return homeworkRepository.findByPublishedTrueOrderByCreatedAtDesc();
     }
 
+    @Transactional(readOnly = true)
     public List<Homework> listAll() {
-        return homeworkRepository.findAllByOrderByCreatedAtDesc();
+        List<Homework> list = homeworkRepository.findAllByOrderByCreatedAtDesc();
+        // The admin quizzes list (and its info tooltip) reads hw.video.title and
+        // hw.questions — both LAZY associations. spring.jpa.open-in-view=false means
+        // the Hibernate session closes before the view renders, so we have to
+        // initialize them here, inside the transaction, before returning.
+        for (Homework hw : list) {
+            Hibernate.initialize(hw.getVideo());
+            Hibernate.initialize(hw.getQuestions());
+        }
+        return list;
     }
 
     public Homework findById(Long id) {
@@ -104,11 +115,13 @@ public class HomeworkService {
         Integer mqc = form.getMathQuestionCount();
         hw.setMathQuestionCount(mqc != null && mqc > 0 ? mqc : 40);
 
-        // Timer: when on, students see a countdown and the attempt
-        // auto-submits when it hits zero.
-        hw.setTimerEnabled(form.isTimerEnabled());
+        // Timer: driven entirely by timerMinutes now — 0 or blank means
+        // unlimited (no timer); any positive value turns the countdown on
+        // and is how many minutes it runs for.
         Integer tm = form.getTimerMinutes();
-        hw.setTimerMinutes(tm != null && tm > 0 ? tm : 10);
+        int minutes = (tm != null && tm > 0) ? tm : 0;
+        hw.setTimerMinutes(minutes);
+        hw.setTimerEnabled(minutes > 0);
 
         if (form.getVideoId() != null) {
             Video v = videoRepository.findById(form.getVideoId()).orElse(null);

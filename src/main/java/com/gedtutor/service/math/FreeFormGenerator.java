@@ -46,6 +46,39 @@ import static com.gedtutor.service.math.MathConfigSupport.randomInRange;
  * When <code>+</code> is chosen: question is <code>3x + 5 = 11</code>, answer = (11−5)/3 = 2<br>
  * When <code>−</code> is chosen: question is <code>3x − 5 = 1</code>,  answer = (1+5)/3 = 2
  *
+ * <h3>Functions</h3>
+ * <p>The answer formula supports a range of built-in functions, e.g.
+ * <code>lcm(a, b)</code> or <code>sqrt(a)</code>:
+ * <ul>
+ *   <li><b>Number theory:</b> {@code gcd(...)}, {@code lcm(...)} — 1+ whole-number args</li>
+ *   <li><b>General math:</b> {@code min(...)}, {@code max(...)} — 1+ args of any kind;
+ *       {@code abs(x)}, {@code sqrt(x)}, {@code floor(x)}, {@code ceil(x)}, {@code round(x)} — 1 arg;
+ *       {@code mod(a, b)}, {@code pow(base, exp)} — 2 args</li>
+ *   <li><b>Trigonometry:</b> {@code sin(deg)}, {@code cos(deg)}, {@code tan(deg)} — degrees;
+ *       {@code sinr(rad)}, {@code cosr(rad)}, {@code tanr(rad)} — radians</li>
+ *   <li><b>Logs &amp; exponents:</b> {@code log(x)} (base 10), {@code ln(x)} (natural log), {@code exp(x)} (e^x)</li>
+ *   <li><b>Combinatorics:</b> {@code fact(n)}, {@code nCr(n, r)}, {@code nPr(n, r)}</li>
+ *   <li><b>Statistics:</b> {@code mean(...)}, {@code median(...)} — 1+ args</li>
+ * </ul>
+ * <p>Results that aren't naturally exact fractions (sqrt of a non-perfect-square,
+ * trig, log, pow with a fractional exponent) are computed with double-precision
+ * floating point and stored as a high-precision approximate fraction — plenty
+ * of accuracy for the template's tolerancePercent/decimalPlaces grading.
+ * Function names are matched case-insensitively (<code>nCr</code>, <code>NCR</code>,
+ * <code>ncr</code> all work).
+ *
+ * <h3>Comparisons &amp; ternary</h3>
+ * <p>Formulas can branch on a comparison using <code>&gt; &lt; &gt;= &lt;= == !=</code>
+ * and the ternary operator, e.g. <code>a &gt; b ? a - b : b - a</code> (an absolute
+ * difference, equivalent to <code>abs(a - b)</code>). Both branches are evaluated
+ * before the condition picks one — the ternary does <em>not</em> short-circuit — so
+ * avoid formulas where the untaken branch alone would divide by zero.
+ * Example:
+ * <pre>
+ *   template:      Least Common Multiple of {a:2-20} and {b:2-5}
+ *   answerFormula: lcm(a, b)
+ * </pre>
+ *
  * <p>{@code parametersJson} shape:
  * <pre>{@code
  * {
@@ -164,9 +197,14 @@ public class FreeFormGenerator implements MathProblemGenerator {
 
         /**
          * Arithmetic formula for the correct answer, referencing the same
-         * placeholder names as the template.  e.g. {@code (c - s * b) / a}.
-         * Supports +, -, *, / and parentheses. Null or blank → display-only.
-         * When {+-} is used, variable {@code s} is available (1 for +, -1 for -).
+         * placeholder names as the template.  e.g. {@code (c - s * b) / a}
+         * or {@code lcm(a, b)}. Supports +, -, *, / and parentheses; the
+         * functions gcd(), lcm(), min(), max(), abs(), sqrt(), floor(),
+         * ceil(), round(), mod(), pow(), sin()/cos()/tan() (degrees),
+         * sinr()/cosr()/tanr() (radians), log(), ln(), exp(), fact(),
+         * nCr(), nPr(), mean(), median(); and comparisons/ternary
+         * (a &gt; b ? x : y). Null or blank → display-only. When {+-} is
+         * used, variable {@code s} is available (1 for +, -1 for -).
          */
         public String answerFormula;
 
@@ -180,17 +218,24 @@ public class FreeFormGenerator implements MathProblemGenerator {
     // ── Rational-arithmetic expression evaluator ─────────────────────────────
 
     /**
-     * Evaluates a simple arithmetic expression using exact {@link Rational}
-     * arithmetic. Supports variables, integer literals, +, -, *, / and
-     * parentheses (no floating-point, no precision loss).
+     * Evaluates an arithmetic expression using exact {@link Rational}
+     * arithmetic where possible (no floating-point, no precision loss),
+     * falling back to a high-precision double-based approximation for
+     * functions whose results are inherently irrational (sqrt, trig, log).
      *
      * <p>Grammar (whitespace ignored):
      * <pre>
-     *   expr   → term  (('+' | '-') term)*
-     *   term   → unary (('*' | '/') unary)*
-     *   unary  → '-' primary | primary
-     *   primary→ '(' expr ')' | INTEGER | IDENTIFIER
+     *   ternary → compare ('?' ternary ':' ternary)?
+     *   compare → expr (('>' | '<' | '>=' | '<=' | '==' | '!=') expr)?
+     *   expr    → term  (('+' | '-') term)*
+     *   term    → unary (('*' | '/') unary)*
+     *   unary   → '-' primary | primary
+     *   primary → '(' ternary ')' | INTEGER | IDENTIFIER ['(' ternary (',' ternary)* ')']
      * </pre>
+     * <p>An IDENTIFIER immediately followed by '(' is a function call;
+     * otherwise it's a variable lookup. A comparison evaluates to 1 (true)
+     * or 0 (false), which the ternary operator then branches on — both
+     * ternary branches are always evaluated (no short-circuiting).
      */
     private static final class RatExpr {
 
@@ -205,10 +250,54 @@ public class FreeFormGenerator implements MathProblemGenerator {
 
         static Rational eval(String formula, Map<String, Integer> vars) {
             RatExpr p = new RatExpr(formula, vars);
-            Rational r = p.parseExpr();
+            Rational r = p.parseTernary();
             if (p.pos < p.s.length())
                 throw new IllegalArgumentException("Unexpected: " + p.s.charAt(p.pos));
             return r;
+        }
+
+        private static final Rational TRUE = Rational.of(1, 1);
+        private static final Rational FALSE = Rational.of(0, 1);
+
+        private Rational parseTernary() {
+            Rational cond = parseCompare();
+            if (pos < s.length() && s.charAt(pos) == '?') {
+                pos++;
+                Rational whenTrue = parseTernary();
+                if (pos < s.length() && s.charAt(pos) == ':') pos++;
+                else throw new IllegalArgumentException("Expected ':' in ternary expression");
+                Rational whenFalse = parseTernary();
+                return cond.numerator() != 0 ? whenTrue : whenFalse;
+            }
+            return cond;
+        }
+
+        private Rational parseCompare() {
+            Rational left = parseExpr();
+            if (pos >= s.length()) return left;
+            char c = s.charAt(pos);
+            String op = null;
+            if ((c == '>' || c == '<') ) {
+                if (pos + 1 < s.length() && s.charAt(pos + 1) == '=') { op = c + "="; pos += 2; }
+                else { op = String.valueOf(c); pos += 1; }
+            } else if (c == '=' && pos + 1 < s.length() && s.charAt(pos + 1) == '=') {
+                op = "=="; pos += 2;
+            } else if (c == '!' && pos + 1 < s.length() && s.charAt(pos + 1) == '=') {
+                op = "!="; pos += 2;
+            }
+            if (op == null) return left;
+            Rational right = parseExpr();
+            int cmp = compare(left, right);
+            boolean result = switch (op) {
+                case ">" -> cmp > 0;
+                case "<" -> cmp < 0;
+                case ">=" -> cmp >= 0;
+                case "<=" -> cmp <= 0;
+                case "==" -> cmp == 0;
+                case "!=" -> cmp != 0;
+                default -> throw new IllegalStateException("Unreachable: " + op);
+            };
+            return result ? TRUE : FALSE;
         }
 
         private Rational parseExpr() {
@@ -243,7 +332,7 @@ public class FreeFormGenerator implements MathProblemGenerator {
             char c = s.charAt(pos);
             if (c == '(') {
                 pos++;
-                Rational r = parseExpr();
+                Rational r = parseTernary();
                 if (pos < s.length() && s.charAt(pos) == ')') pos++;
                 return r;
             }
@@ -256,11 +345,272 @@ public class FreeFormGenerator implements MathProblemGenerator {
                 int start = pos;
                 while (pos < s.length() && (Character.isLetterOrDigit(s.charAt(pos)) || s.charAt(pos) == '_')) pos++;
                 String name = s.substring(start, pos);
+                if (pos < s.length() && s.charAt(pos) == '(') {
+                    pos++; // consume '('
+                    List<Rational> args = new ArrayList<>();
+                    if (pos < s.length() && s.charAt(pos) != ')') {
+                        args.add(parseTernary());
+                        while (pos < s.length() && s.charAt(pos) == ',') {
+                            pos++;
+                            args.add(parseTernary());
+                        }
+                    }
+                    if (pos < s.length() && s.charAt(pos) == ')') pos++;
+                    else throw new IllegalArgumentException("Expected ')' after arguments to " + name + "(...)");
+                    return callFunction(name, args);
+                }
                 Integer val = vars.get(name);
                 if (val == null) throw new IllegalArgumentException("Unknown variable: " + name);
                 return Rational.of(val, 1);
             }
             throw new IllegalArgumentException("Unexpected character: " + c);
+        }
+
+        /** Precision used when a function's result isn't an exact fraction (sqrt, trig, log, ...). */
+        private static final long IRRATIONAL_SCALE = 100_000_000L; // 8 decimal digits
+
+        /** Built-in functions available to answer formulas — see class javadoc for the full list. */
+        private static Rational callFunction(String rawName, List<Rational> args) {
+            String name = rawName.toLowerCase(Locale.ROOT);
+            switch (name) {
+                case "abs": {
+                    requireArgCount(name, args, 1, 1);
+                    Rational a = args.get(0);
+                    return a.numerator() < 0 ? neg(a) : a;
+                }
+                case "min": {
+                    requireArgCount(name, args, 1, Integer.MAX_VALUE);
+                    Rational best = args.get(0);
+                    for (int i = 1; i < args.size(); i++) {
+                        if (compare(args.get(i), best) < 0) best = args.get(i);
+                    }
+                    return best;
+                }
+                case "max": {
+                    requireArgCount(name, args, 1, Integer.MAX_VALUE);
+                    Rational best = args.get(0);
+                    for (int i = 1; i < args.size(); i++) {
+                        if (compare(args.get(i), best) > 0) best = args.get(i);
+                    }
+                    return best;
+                }
+                case "gcd": {
+                    requireArgCount(name, args, 1, Integer.MAX_VALUE);
+                    long g = 0;
+                    for (Rational r : args) g = gcdLong(g, requireInteger(name, r));
+                    return Rational.of(g, 1);
+                }
+                case "lcm": {
+                    requireArgCount(name, args, 1, Integer.MAX_VALUE);
+                    long l = 1;
+                    for (Rational r : args) {
+                        long v = requireInteger(name, r);
+                        if (v == 0) return Rational.of(0, 1);
+                        long g = gcdLong(l, v);
+                        l = Math.abs((l / g) * v);
+                    }
+                    return Rational.of(l, 1);
+                }
+                case "mod": {
+                    requireArgCount(name, args, 2, 2);
+                    long a = requireInteger(name, args.get(0));
+                    long b = requireInteger(name, args.get(1));
+                    if (b == 0) throw new ArithmeticException("mod() by zero");
+                    return Rational.of(Math.floorMod(a, b), 1);
+                }
+                case "pow": {
+                    requireArgCount(name, args, 2, 2);
+                    Rational base = args.get(0);
+                    Rational expArg = args.get(1);
+                    if (expArg.denominator() == 1) {
+                        long e = expArg.numerator();
+                        if (Math.abs(e) > 1000)
+                            throw new IllegalArgumentException("pow() exponent too large: " + e);
+                        Rational result = Rational.of(1, 1);
+                        for (long i = 0; i < Math.abs(e); i++) result = mul(result, base);
+                        if (e < 0) {
+                            if (result.numerator() == 0) throw new ArithmeticException("pow(): 0 raised to a negative power");
+                            result = div(Rational.of(1, 1), result);
+                        }
+                        return result;
+                    }
+                    return fromDouble(Math.pow(base.toDouble(), expArg.toDouble()));
+                }
+                case "sqrt": {
+                    requireArgCount(name, args, 1, 1);
+                    Rational a = args.get(0);
+                    if (a.numerator() < 0) throw new ArithmeticException("sqrt() of a negative number");
+                    long sqrtNum = exactIntSqrt(a.numerator());
+                    long sqrtDen = exactIntSqrt(a.denominator());
+                    if (sqrtNum >= 0 && sqrtDen >= 0) return Rational.of(sqrtNum, sqrtDen);
+                    return fromDouble(Math.sqrt(a.toDouble()));
+                }
+                case "floor": {
+                    requireArgCount(name, args, 1, 1);
+                    Rational a = args.get(0);
+                    return Rational.of(Math.floorDiv(a.numerator(), a.denominator()), 1);
+                }
+                case "ceil": {
+                    requireArgCount(name, args, 1, 1);
+                    Rational a = args.get(0);
+                    return Rational.of(-Math.floorDiv(-a.numerator(), a.denominator()), 1);
+                }
+                case "round": {
+                    requireArgCount(name, args, 1, 1);
+                    Rational a = args.get(0);
+                    // round-half-up: floor(a + 1/2) = floor((2*numerator + denominator) / (2*denominator))
+                    long doubledNumerator = 2 * a.numerator() + a.denominator();
+                    return Rational.of(Math.floorDiv(doubledNumerator, 2 * a.denominator()), 1);
+                }
+                case "sin": {
+                    requireArgCount(name, args, 1, 1);
+                    return fromDouble(Math.sin(Math.toRadians(args.get(0).toDouble())));
+                }
+                case "cos": {
+                    requireArgCount(name, args, 1, 1);
+                    return fromDouble(Math.cos(Math.toRadians(args.get(0).toDouble())));
+                }
+                case "tan": {
+                    requireArgCount(name, args, 1, 1);
+                    return fromDouble(Math.tan(Math.toRadians(args.get(0).toDouble())));
+                }
+                case "sinr": {
+                    requireArgCount(name, args, 1, 1);
+                    return fromDouble(Math.sin(args.get(0).toDouble()));
+                }
+                case "cosr": {
+                    requireArgCount(name, args, 1, 1);
+                    return fromDouble(Math.cos(args.get(0).toDouble()));
+                }
+                case "tanr": {
+                    requireArgCount(name, args, 1, 1);
+                    return fromDouble(Math.tan(args.get(0).toDouble()));
+                }
+                case "log": {
+                    requireArgCount(name, args, 1, 1);
+                    double v = args.get(0).toDouble();
+                    if (v <= 0) throw new ArithmeticException("log() of a non-positive number");
+                    return fromDouble(Math.log10(v));
+                }
+                case "ln": {
+                    requireArgCount(name, args, 1, 1);
+                    double v = args.get(0).toDouble();
+                    if (v <= 0) throw new ArithmeticException("ln() of a non-positive number");
+                    return fromDouble(Math.log(v));
+                }
+                case "exp": {
+                    requireArgCount(name, args, 1, 1);
+                    return fromDouble(Math.exp(args.get(0).toDouble()));
+                }
+                case "fact": {
+                    requireArgCount(name, args, 1, 1);
+                    long n = requireInteger(name, args.get(0));
+                    if (n < 0) throw new ArithmeticException("fact() of a negative number");
+                    long result = 1;
+                    for (long i = 2; i <= n; i++) result = Math.multiplyExact(result, i);
+                    return Rational.of(result, 1);
+                }
+                case "ncr": {
+                    requireArgCount(name, args, 2, 2);
+                    long n = requireInteger(name, args.get(0));
+                    long r = requireInteger(name, args.get(1));
+                    return Rational.of(combinations(n, r), 1);
+                }
+                case "npr": {
+                    requireArgCount(name, args, 2, 2);
+                    long n = requireInteger(name, args.get(0));
+                    long r = requireInteger(name, args.get(1));
+                    return Rational.of(permutations(n, r), 1);
+                }
+                case "mean": {
+                    requireArgCount(name, args, 1, Integer.MAX_VALUE);
+                    Rational sum = Rational.of(0, 1);
+                    for (Rational r : args) sum = add(sum, r);
+                    return div(sum, Rational.of(args.size(), 1));
+                }
+                case "median": {
+                    requireArgCount(name, args, 1, Integer.MAX_VALUE);
+                    List<Rational> sorted = new ArrayList<>(args);
+                    sorted.sort(RatExpr::compare);
+                    int mid = sorted.size() / 2;
+                    if (sorted.size() % 2 == 1) return sorted.get(mid);
+                    return div(add(sorted.get(mid - 1), sorted.get(mid)), Rational.of(2, 1));
+                }
+                default:
+                    throw new IllegalArgumentException("Unknown function: " + rawName + "(). Supported: gcd, lcm, min, max, "
+                            + "abs, sqrt, floor, ceil, round, mod, pow, sin, cos, tan, sinr, cosr, tanr, "
+                            + "log, ln, exp, fact, nCr, nPr, mean, median.");
+            }
+        }
+
+        private static void requireArgCount(String fn, List<Rational> args, int min, int max) {
+            if (args.size() < min || args.size() > max) {
+                throw new IllegalArgumentException(fn + "() expects at least " + min
+                        + (max == Integer.MAX_VALUE ? "" : " and at most " + max)
+                        + " argument(s), got " + args.size());
+            }
+        }
+
+        /** gcd()/lcm()/mod()/fact()/nCr()/nPr() only make sense on whole numbers. */
+        private static long requireInteger(String fn, Rational r) {
+            if (r.denominator() != 1) {
+                throw new IllegalArgumentException(fn + "() requires whole-number arguments, got "
+                        + r.numerator() + "/" + r.denominator());
+            }
+            return r.numerator();
+        }
+
+        private static long gcdLong(long a, long b) {
+            a = Math.abs(a);
+            b = Math.abs(b);
+            while (b != 0) {
+                long t = b;
+                b = a % b;
+                a = t;
+            }
+            return a;
+        }
+
+        private static long permutations(long n, long r) {
+            if (n < 0 || r < 0 || r > n) throw new ArithmeticException("nPr() requires 0 <= r <= n");
+            long result = 1;
+            for (long i = 0; i < r; i++) result = Math.multiplyExact(result, n - i);
+            return result;
+        }
+
+        private static long combinations(long n, long r) {
+            if (n < 0 || r < 0 || r > n) throw new ArithmeticException("nCr() requires 0 <= r <= n");
+            r = Math.min(r, n - r); // symmetry keeps the loop (and the numbers) small
+            long result = 1;
+            for (long i = 0; i < r; i++) {
+                result = Math.multiplyExact(result, n - i);
+                result /= (i + 1); // always exact at this point — standard nCr identity
+            }
+            return result;
+        }
+
+        /** Integer square root if {@code n} is a perfect square, else -1. */
+        private static long exactIntSqrt(long n) {
+            if (n < 0) return -1;
+            long r = (long) Math.sqrt((double) n);
+            for (long candidate = Math.max(0, r - 2); candidate <= r + 2; candidate++) {
+                if (candidate * candidate == n) return candidate;
+            }
+            return -1;
+        }
+
+        /** Converts a double into a high-precision approximate Rational (see {@link #IRRATIONAL_SCALE}). */
+        private static Rational fromDouble(double v) {
+            if (Double.isNaN(v) || Double.isInfinite(v))
+                throw new ArithmeticException("Result is not a finite number");
+            return Rational.of(Math.round(v * IRRATIONAL_SCALE), IRRATIONAL_SCALE);
+        }
+
+        /** Cross-multiplication compare; relies on Rational normalizing denominators to be positive. */
+        private static int compare(Rational a, Rational b) {
+            long lhs = a.numerator() * b.denominator();
+            long rhs = b.numerator() * a.denominator();
+            return Long.compare(lhs, rhs);
         }
 
         private static Rational add(Rational a, Rational b) {

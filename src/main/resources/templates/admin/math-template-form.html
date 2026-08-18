@@ -50,8 +50,12 @@
                    style="font-family: 'Courier New', monospace; font-size: 1rem;"/>
             <small class="text-muted">
                 Arithmetic expression using the same placeholder names as the template.
-                Supports <code>+</code> <code>-</code> <code>*</code> <code>/</code> and parentheses.
+                Supports <code>+</code> <code>-</code> <code>*</code> <code>/</code>, parentheses,
+                comparisons/ternary (<code>a &gt; b ? x : y</code>), and functions — see the syntax
+                guide below for the full list (gcd, lcm, min, max, abs, sqrt, floor, ceil, round,
+                mod, pow, sin/cos/tan, log, ln, exp, fact, nCr, nPr, mean, median).
                 Example: template <code>\frac{{a}}{{b}} + \frac{{c}}{{d}}</code> → formula <code>a/b + c/d</code>.
+                Or: template <code>Least Common Multiple of {a} and {b}</code> → formula <code>lcm(a, b)</code>.
             </small>
         </div>
 
@@ -145,6 +149,24 @@
             <code>+</code> and <code>s = -1</code> for <code>−</code>. Use
             <code>(c - s * b) / a</code> so one formula covers both cases.
         </p>
+        <p class="text-muted" style="font-size:.9rem; margin-top:.5rem;">
+            <strong>Functions</strong> — number theory: <code>gcd()</code> <code>lcm()</code>
+            (1+ whole-number args); general math: <code>min()</code> <code>max()</code> (1+ args),
+            <code>abs()</code> <code>sqrt()</code> <code>floor()</code> <code>ceil()</code> <code>round()</code>
+            (1 arg), <code>mod()</code> <code>pow()</code> (2 args); trig: <code>sin()</code> <code>cos()</code>
+            <code>tan()</code> (degrees), <code>sinr()</code> <code>cosr()</code> <code>tanr()</code> (radians);
+            logs: <code>log()</code> (base 10) <code>ln()</code> (natural) <code>exp()</code> (e^x);
+            combinatorics: <code>fact()</code> <code>nCr()</code> <code>nPr()</code>;
+            statistics: <code>mean()</code> <code>median()</code> (1+ args).
+            Results that aren't exact fractions (sqrt of a non-perfect-square, trig, log) are
+            rounded to a high-precision approximation — plenty for grading tolerance/decimal places.
+        </p>
+        <p class="text-muted" style="font-size:.9rem; margin-top:.5rem;">
+            <strong>Comparisons &amp; ternary</strong> — formulas can branch with
+            <code>&gt; &lt; &gt;= &lt;= == !=</code> and <code>? :</code>, e.g.
+            <code>a &gt; b ? a - b : b - a</code>. Both branches are always evaluated
+            (no short-circuiting), so avoid an untaken branch that divides by zero.
+        </p>
         <table style="margin-top:.75rem; font-size:.88rem; border-collapse:collapse; width:100%;">
             <thead>
                 <tr style="background:#eef0fb;">
@@ -188,6 +210,31 @@
                     <td style="padding:.35rem .7rem;"><code>{a:1-50}.{c:1-9} \div {b:1-20}.{d:1-9}</code></td>
                     <td style="padding:.35rem .7rem;"><code>(a + c/10) / (b + d/10)</code></td>
                     <td style="padding:.35rem .7rem;">Per-placeholder ranges: e.g. <em>23.4 ÷ 7.1</em></td>
+                </tr>
+                <tr style="background:#f4f6fb;">
+                    <td style="padding:.35rem .7rem;">Least Common Multiple of <code>{a:2-20}</code> and <code>{b:2-5}</code></td>
+                    <td style="padding:.35rem .7rem;"><code>lcm(a, b)</code></td>
+                    <td style="padding:.35rem .7rem;">e.g. LCM of 12 and 4 → answer 12</td>
+                </tr>
+                <tr>
+                    <td style="padding:.35rem .7rem;">Greatest Common Factor of <code>{a:2-50}</code> and <code>{b:2-50}</code></td>
+                    <td style="padding:.35rem .7rem;"><code>gcd(a, b)</code></td>
+                    <td style="padding:.35rem .7rem;">e.g. GCF of 18 and 24 → answer 6</td>
+                </tr>
+                <tr style="background:#f4f6fb;">
+                    <td style="padding:.35rem .7rem;">A right triangle has legs <code>{a:3-12}</code> and <code>{b:3-12}</code>. Find the hypotenuse.</td>
+                    <td style="padding:.35rem .7rem;"><code>sqrt(pow(a,2) + pow(b,2))</code></td>
+                    <td style="padding:.35rem .7rem;">e.g. legs 3 and 4 → answer 5 (exact when a perfect square)</td>
+                </tr>
+                <tr>
+                    <td style="padding:.35rem .7rem;">In how many ways can you choose <code>{r:2-4}</code> books from <code>{n:5-10}</code>?</td>
+                    <td style="padding:.35rem .7rem;"><code>nCr(n, r)</code></td>
+                    <td style="padding:.35rem .7rem;">e.g. choose 3 from 8 → answer 56</td>
+                </tr>
+                <tr style="background:#f4f6fb;">
+                    <td style="padding:.35rem .7rem;">What is the remainder when <code>{a:10-99}</code> is divided by <code>{b:2-9}</code>?</td>
+                    <td style="padding:.35rem .7rem;"><code>mod(a, b)</code></td>
+                    <td style="padding:.35rem .7rem;">e.g. 47 mod 5 → answer 2</td>
                 </tr>
             </tbody>
         </table>

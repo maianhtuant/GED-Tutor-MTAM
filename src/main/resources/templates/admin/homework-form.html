@@ -110,18 +110,13 @@
 
         <hr style="margin: 1rem 0; border: none; border-top: 1px solid #eee;"/>
 
-        <label class="inline">
-            <input type="checkbox" th:field="*{timerEnabled}" id="timerToggle">
-            <strong>Timer</strong> — countdown while the student takes the quiz
-        </label>
-        <small class="muted">
-            When on, students see a countdown on the quiz page starting the moment they click
-            "Start Quiz". The attempt is automatically submitted when time runs out.
-        </small>
-
         <label>Timer duration (minutes)
-            <input type="number" th:field="*{timerMinutes}" min="1" max="300" value="10">
-            <small class="muted">Only used when "Timer" is checked.</small>
+            <input type="number" th:field="*{timerMinutes}" min="0" max="300" placeholder="0 = unlimited">
+            <small class="muted">
+                0 (or blank) means unlimited — no timer. Any other value turns on a countdown:
+                students see it on the quiz page starting the moment they click "Start Quiz",
+                and the attempt is automatically submitted when it hits zero.
+            </small>
         </label>
 
         <button type="submit" class="btn btn-primary">Save</button>

@@ -1,24 +1,367 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Manage Quizzes')}"></head>
+<style>
+  .add-quiz-card {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+  }
+  .add-quiz-card h2 {
+    margin: 0 0 1.2rem;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #374151;
+  }
+  .add-quiz-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.75rem;
+    align-items: end;
+  }
+  .add-quiz-grid label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #6b7280;
+    margin-bottom: 0.3rem;
+  }
+  .add-quiz-grid input:not([type=checkbox]),
+  .add-quiz-grid select,
+  .add-quiz-grid textarea {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    font-size: 0.92rem;
+    box-sizing: border-box;
+    font-family: inherit;
+  }
+  .add-quiz-grid input:not([type=checkbox]):focus,
+  .add-quiz-grid select:focus,
+  .add-quiz-grid textarea:focus {
+    outline: 2px solid #2563eb;
+    border-color: #2563eb;
+  }
+  .add-quiz-grid .span-2 { grid-column: span 2; }
+  .add-quiz-grid .span-full { grid-column: 1 / -1; }
+  .add-quiz-grid textarea { resize: vertical; min-height: 2.35rem; }
+  .add-quiz-grid .checkbox-field {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    height: 2.35rem;
+  }
+  .add-quiz-grid .checkbox-field input[type=checkbox] {
+    width: 16px;
+    height: 16px;
+    flex: 0 0 auto;
+    margin: 0;
+  }
+  .add-quiz-grid .checkbox-field label {
+    margin: 0;
+    font-weight: 600;
+    color: #374151;
+    font-size: 0.87rem;
+    white-space: nowrap;
+  }
+
+  .quiz-items-section {
+    grid-column: 1 / -1;
+    border-top: 1px solid #e5e7eb;
+    padding-top: 0.85rem;
+    margin-top: 0.15rem;
+  }
+  .quiz-items-section h3 { margin: 0 0 0.4rem; font-size: 0.88rem; color: #374151; }
+  .quiz-items-section .muted { font-size: 0.8rem; color: #9ca3af; margin: 0 0 0.5rem; }
+  .starter-row select, .starter-row input {
+    padding: 0.45rem 0.6rem; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; font-size: 0.88rem;
+  }
+
+  .quiz-count-line { margin-bottom: 0.6rem; }
+  .quiz-count { font-size: 0.85rem; color: #9ca3af; }
+
+  .title-cell { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+  .badge-sm {
+    display: inline-block;
+    padding: 0.1rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .badge-math  { background: #ede9fe; color: #6d28d9; }
+  .badge-timer { background: #fff7ed; color: #c2410c; }
+
+  /* ── per-column filter row, right under the header row ─────────── */
+  .filter-row th {
+    padding: 0.35rem 0.5rem;
+    background: #fff;
+    font-weight: 400;
+  }
+  .filter-row input,
+  .filter-row select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 0.35rem 0.5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 0.82rem;
+    font-weight: 400;
+    color: #374151;
+  }
+
+  /* ── (i) info icon + hover popover ───────────────────────────── */
+  .info-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 17px;
+    height: 17px;
+    border-radius: 50%;
+    background: #e5e7eb;
+    color: #4b5563;
+    font-size: 11px;
+    font-weight: 700;
+    font-style: normal;
+    cursor: help;
+    position: relative;
+    flex-shrink: 0;
+    user-select: none;
+  }
+  .info-icon:hover,
+  .info-icon:focus { background: #2563eb; color: #fff; }
+  .info-icon:hover .info-popover,
+  .info-icon:focus .info-popover { display: block; }
+  .info-popover {
+    display: none;
+    position: absolute;
+    z-index: 30;
+    top: 135%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    background: #111827;
+    color: #f3f4f6;
+    border-radius: 8px;
+    padding: 0.75rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 400;
+    line-height: 1.45;
+    text-align: left;
+    white-space: normal;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.28);
+  }
+  .info-popover::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-bottom-color: #111827;
+  }
+  .info-popover dt { font-weight: 600; color: #9ca3af; margin-top: 0.5rem; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.02em; }
+  .info-popover dt:first-child { margin-top: 0; }
+  .info-popover dd { margin: 0.1rem 0 0; }
+  .info-popover .instructions-preview {
+    max-height: 90px;
+    overflow-y: auto;
+  }
+  /* Table row hover shouldn't clip the popover */
+  #quizTable { overflow: visible; }
+</style>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
 <main class="container">
-    <div class="page-head">
-        <h1>Quizzes</h1>
-        <a th:href="@{/admin/homework/new}" class="btn btn-primary">+ New quiz</a>
+    <div class="page-head" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
+        <h1 style="margin:0;">Quizzes</h1>
     </div>
 
     <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
 
-    <table class="table">
+    <!-- ── Add Quiz (every field from the full form, laid out compactly) ── -->
+    <div class="add-quiz-card">
+        <h2>Add New Quiz</h2>
+        <form th:action="@{/admin/homework/new}" th:object="${form}" method="post">
+            <div class="add-quiz-grid">
+                <div>
+                    <label>Title *</label>
+                    <input type="text" th:field="*{title}" required placeholder="e.g. Linear Equations Quiz">
+                </div>
+                <div>
+                    <label>Subject *</label>
+                    <select th:field="*{subjectId}" required id="subjectSelect">
+                        <option value="">— choose —</option>
+                        <option th:each="s : ${subjects}"
+                                th:value="${s.id}"
+                                th:text="${s.name}"
+                                th:attr="data-name=${s.name}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label>Category</label>
+                    <input type="text" th:field="*{category}" id="categoryInput" list="categoryList"
+                           placeholder="e.g. GED" autocomplete="off">
+                    <datalist id="categoryList"></datalist>
+                </div>
+                <div>
+                    <label>Video (optional)</label>
+                    <select th:field="*{videoId}">
+                        <option value="">— none —</option>
+                        <option th:each="v : ${videos}" th:value="${v.id}" th:text="${v.title}"></option>
+                    </select>
+                </div>
+                <div>
+                    <label>Due date</label>
+                    <input type="datetime-local" th:field="*{dueDate}">
+                </div>
+
+                <div>
+                    <label>Pool size</label>
+                    <input type="number" th:field="*{poolSize}" min="0" placeholder="e.g. 10">
+                </div>
+                <div>
+                    <label>Qs / attempt</label>
+                    <input type="number" th:field="*{questionsPerAttempt}" min="0" placeholder="all">
+                </div>
+                <div>
+                    <label>Math Qs / attempt</label>
+                    <input type="number" th:field="*{mathQuestionCount}" min="1" max="200" value="40">
+                </div>
+                <div>
+                    <label>Timer (min)</label>
+                    <input type="number" th:field="*{timerMinutes}" min="0" max="300" placeholder="0 = unlimited">
+                </div>
+                <div class="checkbox-field">
+                    <input type="checkbox" th:field="*{published}" id="publishedToggle">
+                    <label for="publishedToggle">Published</label>
+                </div>
+
+                <div class="checkbox-field">
+                    <input type="checkbox" th:field="*{mathQuiz}" id="mathQuizToggle">
+                    <label for="mathQuizToggle">Math quiz</label>
+                </div>
+
+                <div class="span-2">
+                    <label>Instructions</label>
+                    <textarea th:field="*{instructions}" rows="1"></textarea>
+                </div>
+
+                <div>
+                    <label>&nbsp;</label>
+                    <button type="submit" class="btn btn-primary" style="width:100%">Create Quiz</button>
+                </div>
+
+                <!-- Starter math-quiz items — optional, only takes space once a row is added. -->
+                <div class="quiz-items-section">
+                    <h3>Math quiz items (optional)</h3>
+                    <p class="muted">Pick specific templates + how many questions from each, instead of the random spread above.</p>
+                    <div id="starterItems"></div>
+                    <button type="button" id="addStarterRow" class="btn">+ Add another</button>
+                </div>
+            </div>
+        </form>
+
+        <!-- Hidden template row for the starter math-quiz items above, used by the JS below. -->
+        <template id="starterRowTemplate">
+            <div class="starter-row" style="display:flex; gap:0.5rem; align-items:end; margin-bottom:0.5rem;">
+                <div style="flex:1;">
+                    <label style="display:block;font-size:0.8rem;font-weight:600;color:#6b7280;margin-bottom:0.2rem;">Template</label>
+                    <select name="starterTemplateId" required style="width:100%;">
+                        <option th:each="t : ${templates}" th:value="${t.id}"
+                                th:text="${t.label} + ' (' + ${t.kind.name()} + ')'">Quadratic</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block;font-size:0.8rem;font-weight:600;color:#6b7280;margin-bottom:0.2rem;">Questions</label>
+                    <input type="number" name="starterQuestionCount" value="5" min="1" max="100" style="width:6rem;"/>
+                </div>
+                <div>
+                    <button type="button" class="btn remove-starter">Remove</button>
+                </div>
+            </div>
+        </template>
+    </div>
+
+    <div class="quiz-count-line">
+        <span class="quiz-count" id="quizCount"
+              th:text="${#lists.size(homeworkList)} + ' quizzes'"></span>
+    </div>
+
+    <table class="table" id="quizTable">
         <thead>
-        <tr><th>Title</th><th>Subject</th><th>Due</th><th>Q / attempt</th><th>Published</th><th>Actions</th></tr>
+        <tr>
+            <th>Title</th>
+            <th>Subject</th>
+            <th>Due</th>
+            <th>Q / attempt</th>
+            <th>Published</th>
+            <th>Actions</th>
+        </tr>
+        <tr class="filter-row">
+            <th><input type="text" id="filterTitle" placeholder="filter here" autocomplete="off"></th>
+            <th><input type="text" id="filterSubject" placeholder="filter here" autocomplete="off"></th>
+            <th></th>
+            <th></th>
+            <th>
+                <select id="filterPublished">
+                    <option value="">filter here</option>
+                    <option value="true">Published</option>
+                    <option value="false">Draft</option>
+                </select>
+            </th>
+            <th></th>
+        </tr>
         </thead>
         <tbody>
-        <tr th:each="hw : ${homeworkList}">
-            <td th:text="${hw.title}">Title</td>
+        <tr th:each="hw : ${homeworkList}"
+            th:attr="data-title=${hw.title.toLowerCase()},
+                      data-subject=${(hw.subject != null ? hw.subject.name : '').toLowerCase()},
+                      data-published=${hw.published}">
+            <td>
+                <div class="title-cell">
+                    <span th:text="${hw.title}">Title</span>
+                    <span th:if="${hw.mathQuiz}" class="badge-sm badge-math">Math quiz</span>
+                    <span th:if="${hw.timerEnabled}" class="badge-sm badge-timer"
+                          th:text="${'⏱ ' + (hw.timerMinutes ?: 10) + ' min'}">⏱ 10 min</span>
+
+                    <span class="info-icon" tabindex="0">i
+                        <span class="info-popover">
+                            <dl style="margin:0;">
+                                <dt>Category</dt>
+                                <dd th:text="${hw.category ?: '—'}">—</dd>
+
+                                <dt>Instructions</dt>
+                                <dd class="instructions-preview"
+                                    th:text="${!#strings.isEmpty(hw.instructions) ? hw.instructions : '—'}">—</dd>
+
+                                <dt>Question bank</dt>
+                                <dd th:if="${!hw.mathQuiz}"
+                                    th:text="${#lists.size(hw.questions) + ' linked' + (hw.poolSize != null and hw.poolSize > 0 ? ' (target ' + hw.poolSize + ')' : '')}">
+                                    5 linked
+                                </dd>
+                                <dd th:if="${hw.mathQuiz}"
+                                    th:text="${!#lists.isEmpty(hw.mathItems) ? (#lists.size(hw.mathItems) + ' template item(s), ' + hw.totalMathItemQuestionCount() + ' questions/attempt') : (hw.mathQuestionCount + ' questions/attempt (random mix)')}">
+                                    40 questions/attempt (random mix)
+                                </dd>
+
+                                <dt>Timer</dt>
+                                <dd th:text="${hw.timerEnabled ? (hw.timerMinutes ?: 10) + ' minutes' : 'Off'}">Off</dd>
+
+                                <dt>Video</dt>
+                                <dd th:text="${hw.video != null ? hw.video.title : '—'}">—</dd>
+
+                                <dt>Created</dt>
+                                <dd th:text="${#temporals.format(hw.createdAt,'MMM d, yyyy')}">Jan 1, 2026</dd>
+                            </dl>
+                        </span>
+                    </span>
+                </div>
+            </td>
             <td th:text="${hw.subject != null ? hw.subject.name : '—'}">Math</td>
             <td th:text="${hw.dueDate != null ? #temporals.format(hw.dueDate,'MMM d, yyyy HH:mm') : '—'}">—</td>
             <td th:text="${hw.questionsPerAttempt != null and hw.questionsPerAttempt > 0 ? hw.questionsPerAttempt : 'all'}">all</td>
@@ -35,8 +378,89 @@
         </tr>
         </tbody>
     </table>
+    <p id="noQuizzes" style="display:none;color:#888;font-style:italic;">No quizzes match your filters.</p>
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<!-- Starter math-quiz items: add/remove rows dynamically (create flow). -->
+<script th:attr="nonce=${_cspNonce}">
+(function () {
+    const container = document.getElementById('starterItems');
+    const tpl       = document.getElementById('starterRowTemplate');
+    const addBtn    = document.getElementById('addStarterRow');
+    if (!container || !tpl || !addBtn) return;
+
+    function addRow() {
+        const row = tpl.content.firstElementChild.cloneNode(true);
+        row.querySelector('.remove-starter').addEventListener('click', () => row.remove());
+        container.appendChild(row);
+    }
+    addBtn.addEventListener('click', addRow);
+})();
+</script>
+
+<!-- Category suggestions based on chosen subject. -->
+<script th:attr="nonce=${_cspNonce}">
+(function () {
+    const CATEGORIES = {
+        'Math':          ['GED', 'Pre-Calculus', 'Calculus 1', 'Calculus 2', 'Calculus 3', 'Linear Algebra', 'Differential Equations', 'Statistics', 'Trigonometry'],
+        'Science':       ['GED', 'Biology', 'Chemistry', 'Physics', 'Earth Science'],
+        'Social Studies':['GED', 'US History', 'World History', 'Civics', 'Geography', 'Economics'],
+        'Language Arts': ['GED', 'Reading', 'Writing', 'Grammar', 'Essay Writing', 'Literature'],
+        'Reasoning':     ['GED', 'Critical Thinking', 'Logic', 'Problem Solving']
+    };
+    const subjectSelect = document.getElementById('subjectSelect');
+    const categoryList  = document.getElementById('categoryList');
+    if (!subjectSelect || !categoryList) return;
+    function updateSuggestions() {
+        const opt  = subjectSelect.options[subjectSelect.selectedIndex];
+        const name = opt ? (opt.dataset.name || opt.text) : '';
+        const opts = CATEGORIES[name] || ['GED'];
+        categoryList.innerHTML = opts.map(o => `<option value="${o}"></option>`).join('');
+    }
+    subjectSelect.addEventListener('change', updateSuggestions);
+    updateSuggestions();
+})();
+</script>
+
+<!-- Per-column table filters. -->
+<script th:attr="nonce=${_cspNonce}">
+(function () {
+    const titleInput   = document.getElementById('filterTitle');
+    const subjectInput = document.getElementById('filterSubject');
+    const publishedSel = document.getElementById('filterPublished');
+    const counter       = document.getElementById('quizCount');
+    const noRows         = document.getElementById('noQuizzes');
+    const rows           = Array.from(document.querySelectorAll('#quizTable tbody tr'));
+    const total           = rows.length;
+
+    function applyFilters() {
+        const title     = titleInput.value.trim().toLowerCase();
+        const subject   = subjectInput.value.trim().toLowerCase();
+        const published = publishedSel.value;
+        const active    = !!(title || subject || published);
+
+        let shown = 0;
+        rows.forEach(r => {
+            const match = (!title || (r.dataset.title || '').includes(title))
+                && (!subject || (r.dataset.subject || '').includes(subject))
+                && (!published || r.dataset.published === published);
+            r.style.display = match ? '' : 'none';
+            if (match) shown++;
+        });
+        counter.textContent = active ? shown + ' of ' + total + ' quizzes' : total + ' quizzes';
+        noRows.style.display = (active && shown === 0) ? 'block' : 'none';
+    }
+
+    titleInput.addEventListener('input', applyFilters);
+    subjectInput.addEventListener('input', applyFilters);
+    publishedSel.addEventListener('change', applyFilters);
+    // Enter just confirms what's already been filtered live — no form to submit here.
+    [titleInput, subjectInput].forEach(el => el.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); applyFilters(); }
+    }));
+})();
+</script>
 </body>
 </html>
