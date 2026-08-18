@@ -73,9 +73,20 @@
     document.addEventListener("DOMContentLoaded", function () {
         const raw     = document.getElementById("math-raw").textContent.trim();
         const display = document.getElementById("math-display");
-        try {
-            katex.render(raw, display, { displayMode: true, throwOnError: false });
-        } catch (e) {
+        // Only run it through KaTeX (math mode) when it actually contains LaTeX
+        // commands — otherwise KaTeX treats plain words as adjacent math
+        // variables and drops every space between them (e.g. a natural-language
+        // template like "Lower Common Multiple of {a} and {b}" would render as
+        // "LowerCommonMultipleof11and2"). Mirrors the same check the student-
+        // facing quiz pages use before calling katex.renderToString().
+        if (raw.indexOf('\\') !== -1) {
+            try {
+                katex.render(raw, display, { displayMode: true, throwOnError: false });
+            } catch (e) {
+                display.textContent = raw;
+            }
+        } else {
+            display.style.fontSize = '1.3rem';
             display.textContent = raw;
         }
     });
