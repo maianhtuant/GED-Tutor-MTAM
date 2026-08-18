@@ -88,6 +88,7 @@
                 <td>
                     <a th:href="@{|/admin/subjects/${root.id}/edit|}" class="btn">Edit</a>
                     <form th:action="@{|/admin/subjects/${root.id}/toggle|}" method="post" style="display:inline">
+                        <input type="hidden" name="active" th:value="${!root.active}">
                         <button type="submit" class="btn"
                                 th:text="${root.active ? 'Deactivate' : 'Activate'}">Toggle</button>
                     </form>
@@ -118,6 +119,7 @@
                 <td>
                     <a th:href="@{|/admin/subjects/${child.id}/edit|}" class="btn">Edit</a>
                     <form th:action="@{|/admin/subjects/${child.id}/toggle|}" method="post" style="display:inline">
+                        <input type="hidden" name="active" th:value="${!child.active}">
                         <button type="submit" class="btn"
                                 th:text="${child.active ? 'Deactivate' : 'Activate'}">Toggle</button>
                     </form>
