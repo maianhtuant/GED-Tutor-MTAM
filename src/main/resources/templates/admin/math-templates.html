@@ -1,6 +1,25 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{fragments/layout :: head('Math Templates')}"></head>
+<style>
+  .template-count-line { margin-bottom: .6rem; font-size: .85rem; color: #9ca3af; }
+  .filter-row th {
+    padding: .35rem .5rem;
+    background: #fff;
+    font-weight: 400;
+  }
+  .filter-row input,
+  .filter-row select {
+    width: 100%;
+    box-sizing: border-box;
+    padding: .35rem .5rem;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: .82rem;
+    font-weight: 400;
+    color: #374151;
+  }
+</style>
 <body>
 <nav th:replace="~{fragments/layout :: nav}"></nav>
 
@@ -21,8 +40,12 @@
         <a th:href="@{/admin/math-templates/new-quadratic}" class="btn btn-primary">Add Quadratic Template</a>
     </div>
 
+    <div th:unless="${#lists.isEmpty(rows)}" class="template-count-line">
+        <span id="templateCount" th:text="${#lists.size(rows)} + ' templates'"></span>
+    </div>
+
     <!-- Template list -->
-    <table th:unless="${#lists.isEmpty(rows)}" class="table">
+    <table th:unless="${#lists.isEmpty(rows)}" class="table" id="templateTable">
         <thead>
             <tr>
                 <th>Kind</th>
@@ -31,9 +54,25 @@
                 <th>Subject</th>
                 <th>Actions</th>
             </tr>
+            <tr class="filter-row">
+                <th>
+                    <select id="filterKind">
+                        <option value="">filter here</option>
+                        <option value="QUADRATIC">Quadratic</option>
+                        <option value="FREE_FORM">Free-Form</option>
+                    </select>
+                </th>
+                <th><input type="text" id="filterLabel" placeholder="filter here" autocomplete="off"></th>
+                <th></th>
+                <th><input type="text" id="filterSubject" placeholder="filter here" autocomplete="off"></th>
+                <th></th>
+            </tr>
         </thead>
         <tbody>
-            <tr th:each="row : ${rows}">
+            <tr th:each="row : ${rows}"
+                th:attr="data-kind=${row.kind()},
+                          data-label=${#strings.toLowerCase(row.label())},
+                          data-subject=${#strings.toLowerCase(row.subjectName())}">
                 <td>
                     <span th:if="${row.kind() == 'QUADRATIC'}"
                           style="background:#0d6efd; color:#fff; padding:.15rem .45rem; border-radius:4px; font-size:.75rem;">QUADRATIC</span>
@@ -64,6 +103,7 @@
             </tr>
         </tbody>
     </table>
+    <p th:unless="${#lists.isEmpty(rows)}" id="noTemplates" style="display:none;color:#888;font-style:italic;">No templates match your filters.</p>
 
     <div style="margin-top:1.5rem;">
         <a th:href="@{/admin}" class="btn">← Back to Dashboard</a>
@@ -71,5 +111,39 @@
 </main>
 
 <footer th:replace="~{fragments/layout :: footer}"></footer>
+
+<script th:unless="${#lists.isEmpty(rows)}" th:attr="nonce=${_cspNonce}">
+(function () {
+    const kindSel     = document.getElementById('filterKind');
+    const labelInput  = document.getElementById('filterLabel');
+    const subjectInput = document.getElementById('filterSubject');
+    const counter      = document.getElementById('templateCount');
+    const noRows        = document.getElementById('noTemplates');
+    const rows           = Array.from(document.querySelectorAll('#templateTable tbody tr'));
+    const total           = rows.length;
+
+    function applyFilters() {
+        const kind    = kindSel.value;
+        const label   = labelInput.value.trim().toLowerCase();
+        const subject = subjectInput.value.trim().toLowerCase();
+        const active  = !!(kind || label || subject);
+
+        let shown = 0;
+        rows.forEach(r => {
+            const match = (!kind || r.dataset.kind === kind)
+                && (!label || (r.dataset.label || '').includes(label))
+                && (!subject || (r.dataset.subject || '').includes(subject));
+            r.style.display = match ? '' : 'none';
+            if (match) shown++;
+        });
+        counter.textContent = active ? shown + ' of ' + total + ' templates' : total + ' templates';
+        noRows.style.display = (active && shown === 0) ? 'block' : 'none';
+    }
+
+    kindSel.addEventListener('change', applyFilters);
+    labelInput.addEventListener('input', applyFilters);
+    subjectInput.addEventListener('input', applyFilters);
+})();
+</script>
 </body>
 </html>
