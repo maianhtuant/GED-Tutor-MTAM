@@ -1,5 +1,6 @@
 package com.gedtutor.dto;
 
+import com.gedtutor.model.AnswerMode;
 import jakarta.validation.constraints.*;
 
 /**
@@ -48,6 +49,14 @@ public class QuadraticTemplateForm {
     @Max(value = 6, message = "Decimal places must be 6 or fewer")
     private int decimalPlaces = 2;
 
+    /**
+     * Fill-in-the-blank (type the answer) or multiple-choice (pick from
+     * options). Multiple-choice only actually applies to the "one repeated
+     * root" outcome (discriminant = 0) — the two-root and no-real-solution
+     * outcomes always stay fill-in-the-blank.
+     */
+    private AnswerMode answerMode = AnswerMode.FILL_IN_BLANK;
+
     // ── Getters / Setters ────────────────────────────────────────────────────
 
     public Long getId()               { return id; }
@@ -91,4 +100,7 @@ public class QuadraticTemplateForm {
 
     public int getDecimalPlaces()                  { return decimalPlaces; }
     public void setDecimalPlaces(int v)             { this.decimalPlaces = v; }
+
+    public AnswerMode getAnswerMode()               { return answerMode; }
+    public void setAnswerMode(AnswerMode v)         { this.answerMode = v; }
 }

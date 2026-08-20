@@ -1,10 +1,13 @@
 package com.gedtutor.service;
 
+import com.gedtutor.dto.AnswerShape;
 import com.gedtutor.dto.GeneratedMathProblem;
+import com.gedtutor.model.AnswerMode;
 import com.gedtutor.model.MathProblemKind;
 import com.gedtutor.model.MathProblemTemplate;
 import com.gedtutor.repository.MathProblemTemplateRepository;
 import com.gedtutor.service.math.MathProblemGenerator;
+import com.gedtutor.service.math.MultipleChoiceSupport;
 import org.springframework.stereotype.Service;
 
 import java.util.EnumMap;
@@ -21,6 +24,9 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 @Service
 public class MathProblemService {
+
+    /** Standard GED-style option count for auto-generated multiple-choice problems. */
+    private static final int MULTIPLE_CHOICE_OPTION_COUNT = 4;
 
     private final MathProblemTemplateRepository repository;
     private final Map<MathProblemKind, MathProblemGenerator> generators;
@@ -45,7 +51,28 @@ public class MathProblemService {
         if (g == null) {
             throw new IllegalStateException("No generator registered for " + template.getKind());
         }
-        return g.generate(template);
+        return applyAnswerMode(template, g.generate(template));
+    }
+
+    /**
+     * When the template is set to MULTIPLE_CHOICE, attach auto-generated
+     * answer options — but only for problems that resolve to a single plain
+     * numeric answer. Problems needing 2+ values (quadratic roots, (x, y)
+     * pairs) or a special non-numeric answer ("no real solution") stay
+     * fill-in-the-blank even if the template asked for multiple-choice,
+     * since matching several values to one choice isn't meaningful.
+     */
+    private GeneratedMathProblem applyAnswerMode(MathProblemTemplate template, GeneratedMathProblem problem) {
+        if (template.getAnswerMode() != AnswerMode.MULTIPLE_CHOICE) return problem;
+        if (problem.hasSpecialAnswer()
+                || problem.shape() != AnswerShape.SCALAR
+                || problem.expectedAnswers().size() != 1) {
+            return problem;
+        }
+        List<String> choices = MultipleChoiceSupport.buildChoices(
+                problem.expectedAnswers().get(0), problem.decimalPlaces(), problem.roundAnswer(),
+                MULTIPLE_CHOICE_OPTION_COUNT);
+        return problem.withChoices(choices);
     }
 
     /**

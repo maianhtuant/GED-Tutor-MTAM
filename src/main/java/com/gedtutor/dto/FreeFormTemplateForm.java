@@ -1,5 +1,6 @@
 package com.gedtutor.dto;
 
+import com.gedtutor.model.AnswerMode;
 import jakarta.validation.constraints.*;
 
 /**
@@ -59,6 +60,9 @@ public class FreeFormTemplateForm {
     @Max(value = 6, message = "Decimal places must be 6 or fewer")
     private int decimalPlaces = 2;
 
+    /** Fill-in-the-blank (type the answer) or multiple-choice (pick from options). */
+    private AnswerMode answerMode = AnswerMode.FILL_IN_BLANK;
+
     // ── Getters / Setters ────────────────────────────────────────────────────
 
     public Long getId() { return id; }
@@ -96,4 +100,7 @@ public class FreeFormTemplateForm {
 
     public int getDecimalPlaces() { return decimalPlaces; }
     public void setDecimalPlaces(int decimalPlaces) { this.decimalPlaces = decimalPlaces; }
+
+    public AnswerMode getAnswerMode() { return answerMode; }
+    public void setAnswerMode(AnswerMode answerMode) { this.answerMode = answerMode; }
 }

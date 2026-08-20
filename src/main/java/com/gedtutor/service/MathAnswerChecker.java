@@ -53,7 +53,15 @@ public class MathAnswerChecker {
         String expectedPretty = prettyExpected(problem);
 
         if (submitted.isEmpty()) {
-            return MathAnswerResult.incorrect("Please type an answer.", expectedPretty, submitted);
+            String msg = problem.isMultipleChoice() ? "Please select an answer." : "Please type an answer.";
+            return MathAnswerResult.incorrect(msg, expectedPretty, submitted);
+        }
+
+        // --- Multiple-choice problems: compare against the option text first,
+        // with a numeric fallback so a caller that (for whatever reason) still
+        // renders a free-text box instead of the choices still grades right. ---
+        if (problem.isMultipleChoice()) {
+            return checkMultipleChoice(problem, submitted, expectedPretty);
         }
 
         String normalized = stripWrappingParens(submitted).toLowerCase(Locale.ROOT);
@@ -119,6 +127,36 @@ public class MathAnswerChecker {
 
     // --- helpers ---
 
+    /**
+     * Grade a multiple-choice submission. {@code submitted} is expected to be
+     * the exact text of the option the student clicked (that's what the
+     * radio-button UI posts back). Falls back to numeric comparison so a
+     * page that renders this problem with a plain text box instead of the
+     * choices — e.g. an older widget that hasn't been updated — still
+     * grades a correct numeric answer as correct.
+     */
+    private MathAnswerResult checkMultipleChoice(GeneratedMathProblem problem, String submitted,
+                                                 String expectedPretty) {
+        String correctText = displayRational(problem.expectedAnswers().get(0),
+                problem.decimalPlaces(), problem.roundAnswer());
+        if (submitted.equals(correctText)) {
+            return MathAnswerResult.correct(expectedPretty, submitted);
+        }
+        try {
+            List<Double> parsed = parseNumbers(submitted);
+            if (parsed.size() == 1) {
+                double tol = problem.tolerancePercent() / 100.0;
+                double floor = absoluteFloor(problem);
+                if (within(parsed.get(0), problem.expectedAnswers().get(0).toDouble(), tol, floor)) {
+                    return MathAnswerResult.correct(expectedPretty, submitted);
+                }
+            }
+        } catch (IllegalArgumentException ignored) {
+            // Not a parseable number either — just wasn't the right choice.
+        }
+        return MathAnswerResult.incorrect("Not quite — check your work.", expectedPretty, submitted);
+    }
+
     static String prettyExpected(GeneratedMathProblem p) {
         if (p.hasSpecialAnswer()) return p.specialAnswer();
         if (p.expectedAnswers().isEmpty()) return "(empty)";
@@ -147,7 +185,7 @@ public class MathAnswerChecker {
      * from {@code Rational.ofDouble}) always show a rounded decimal since
      * there's no clean fraction to fall back to.
      */
-    static String displayRational(Rational r, int decimalPlaces, boolean roundAnswer) {
+    public static String displayRational(Rational r, int decimalPlaces, boolean roundAnswer) {
         if (r.isInteger()) return Long.toString(r.numerator());
         if (r.denominator() > 1000) return formatDecimal(r.toDouble(), decimalPlaces);
         if (!roundAnswer) return r.toString();

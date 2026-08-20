@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gedtutor.dto.FreeFormTemplateForm;
 import com.gedtutor.dto.GeneratedMathProblem;
 import com.gedtutor.dto.QuadraticTemplateForm;
+import com.gedtutor.model.AnswerMode;
 import com.gedtutor.model.MathProblemKind;
 import com.gedtutor.model.MathProblemTemplate;
 import com.gedtutor.model.Subject;
@@ -32,7 +33,7 @@ public class MathTemplateAdminController {
 
     /** Flat view model used in the list page to avoid JSON parsing in Thymeleaf. */
     public record TemplateRow(Long id, String kind, String label, String summary,
-                              String subjectName) {}
+                              String subjectName, String answerMode) {}
 
 
     private final MathProblemTemplateRepository templateRepo;
@@ -71,7 +72,7 @@ public class MathTemplateAdminController {
                         summary = cfg.template + "  [" + cfg.minValue + "–" + cfg.maxValue + "]";
                     }
                     return new TemplateRow(t.getId(), t.getKind().name(), t.getLabel(),
-                            summary, subjectName);
+                            summary, subjectName, t.getAnswerMode().name());
                 })
                 .collect(Collectors.toList());
         model.addAttribute("rows", rows);
@@ -231,6 +232,7 @@ public class MathTemplateAdminController {
         t.setTolerancePercent(form.getTolerancePercent());
         t.setRoundAnswer(form.isRoundAnswer());
         t.setDecimalPlaces(form.getDecimalPlaces());
+        t.setAnswerMode(form.getAnswerMode() != null ? form.getAnswerMode() : AnswerMode.FILL_IN_BLANK);
 
         if (form.getSubjectId() != null) {
             subjectRepo.findById(form.getSubjectId()).ifPresent(t::setSubject);
@@ -267,6 +269,7 @@ public class MathTemplateAdminController {
         form.setTolerancePercent(t.getTolerancePercent());
         form.setRoundAnswer(t.isRoundAnswer());
         form.setDecimalPlaces(t.getDecimalPlaces());
+        form.setAnswerMode(t.getAnswerMode());
 
         FreeFormGenerator.Config cfg = parseConfig(t.getParametersJson());
         form.setTemplate(cfg.template);
@@ -303,6 +306,7 @@ public class MathTemplateAdminController {
         t.setTolerancePercent(form.getTolerancePercent());
         t.setRoundAnswer(form.isRoundAnswer());
         t.setDecimalPlaces(form.getDecimalPlaces());
+        t.setAnswerMode(form.getAnswerMode() != null ? form.getAnswerMode() : AnswerMode.FILL_IN_BLANK);
         if (form.getSubjectId() != null) {
             subjectRepo.findById(form.getSubjectId()).ifPresent(t::setSubject);
         } else {
@@ -330,6 +334,7 @@ public class MathTemplateAdminController {
         form.setTolerancePercent(t.getTolerancePercent());
         form.setRoundAnswer(t.isRoundAnswer());
         form.setDecimalPlaces(t.getDecimalPlaces());
+        form.setAnswerMode(t.getAnswerMode());
         QuadraticSolver.Config cfg = parseQuadraticConfig(t.getParametersJson());
         form.setAMin(cfg.aMin);  form.setAMax(cfg.aMax);
         form.setBMin(cfg.bMin);  form.setBMax(cfg.bMax);

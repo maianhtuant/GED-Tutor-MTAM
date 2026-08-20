@@ -37,6 +37,14 @@
     font-size: 1rem;
     box-sizing: border-box;
   }
+  .choice-group { display:flex; flex-direction:column; gap:0.5rem; margin-bottom:0.5rem; }
+  .choice-option {
+    display:flex; align-items:center; gap:0.6rem;
+    padding:0.55rem 0.85rem; border:1px solid #ccc; border-radius:6px;
+    cursor:pointer; font-size:1rem;
+  }
+  .choice-option:hover { background:#f8f9fa; }
+  .choice-option input[type=radio] { width:auto; margin:0; flex:0 0 auto; }
   .feedback {
     margin-top: 1rem;
     padding: 0.75rem 1rem;
@@ -64,22 +72,31 @@
 
     <p class="question-text" th:attr="data-latex=${problem.questionText}"></p>
 
-    <p class="hint" th:if="${problem.shape.name() == 'SCALAR' and !problem.hasSpecialAnswer()}">
+    <p class="hint" th:if="${#lists.isEmpty(problem.choices) and problem.shape.name() == 'SCALAR' and !problem.hasSpecialAnswer()}">
       One answer. Decimals or fractions are fine: <code>2.5</code> or <code>5/2</code>.
     </p>
-    <p class="hint" th:if="${problem.shape.name() == 'UNORDERED'}">
+    <p class="hint" th:if="${#lists.isEmpty(problem.choices) and problem.shape.name() == 'UNORDERED'}">
       Two answers — separate with a comma, in any order. e.g. <code>2, -3</code>.
     </p>
-    <p class="hint" th:if="${problem.shape.name() == 'ORDERED'}">
+    <p class="hint" th:if="${#lists.isEmpty(problem.choices) and problem.shape.name() == 'ORDERED'}">
       Two values in order: x first, then y. e.g. <code>2, 3</code> or <code>(2, 3)</code>.
     </p>
-    <p class="hint" th:if="${problem.hasSpecialAnswer()}">
+    <p class="hint" th:if="${#lists.isEmpty(problem.choices) and problem.hasSpecialAnswer()}">
       If the equation has no normal answer, type <code th:text="${problem.specialAnswer}">no real solution</code>.
     </p>
+    <p class="hint" th:unless="${#lists.isEmpty(problem.choices)}">Choose the best answer.</p>
 
     <form th:action="@{/practice/math/submit}" method="post">
       <input type="hidden" name="token" th:value="${token}"/>
-      <input type="text" name="answer" class="answer-input"
+
+      <div th:unless="${#lists.isEmpty(problem.choices)}" class="choice-group">
+        <label class="choice-option" th:each="choice : ${problem.choices}">
+          <input type="radio" name="answer" th:value="${choice}"
+                 th:checked="${result != null and result.submitted == choice}"/>
+          <span th:text="${choice}">Option</span>
+        </label>
+      </div>
+      <input th:if="${#lists.isEmpty(problem.choices)}" type="text" name="answer" class="answer-input"
              autocomplete="off" autofocus
              th:value="${result != null ? result.submitted : ''}"
              placeholder="Your answer"/>

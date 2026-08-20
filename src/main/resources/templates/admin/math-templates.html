@@ -52,6 +52,7 @@
                 <th>Label</th>
                 <th>Summary</th>
                 <th>Subject</th>
+                <th>Mode</th>
                 <th>Actions</th>
             </tr>
             <tr class="filter-row">
@@ -65,6 +66,13 @@
                 <th><input type="text" id="filterLabel" placeholder="filter here" autocomplete="off"></th>
                 <th></th>
                 <th><input type="text" id="filterSubject" placeholder="filter here" autocomplete="off"></th>
+                <th>
+                    <select id="filterMode">
+                        <option value="">filter here</option>
+                        <option value="FILL_IN_BLANK">Fill-in-blank</option>
+                        <option value="MULTIPLE_CHOICE">Multiple-choice</option>
+                    </select>
+                </th>
                 <th></th>
             </tr>
         </thead>
@@ -72,7 +80,8 @@
             <tr th:each="row : ${rows}"
                 th:attr="data-kind=${row.kind()},
                           data-label=${#strings.toLowerCase(row.label())},
-                          data-subject=${#strings.toLowerCase(row.subjectName())}">
+                          data-subject=${#strings.toLowerCase(row.subjectName())},
+                          data-mode=${row.answerMode()}">
                 <td>
                     <span th:if="${row.kind() == 'QUADRATIC'}"
                           style="background:#0d6efd; color:#fff; padding:.15rem .45rem; border-radius:4px; font-size:.75rem;">QUADRATIC</span>
@@ -82,6 +91,12 @@
                 <td th:text="${row.label()}">Label</td>
                 <td><code th:text="${row.summary()}">—</code></td>
                 <td th:text="${row.subjectName()}">—</td>
+                <td>
+                    <span th:if="${row.answerMode() == 'MULTIPLE_CHOICE'}"
+                          style="background:#8b5cf6; color:#fff; padding:.15rem .45rem; border-radius:4px; font-size:.75rem;">Multiple-choice</span>
+                    <span th:if="${row.answerMode() == 'FILL_IN_BLANK'}"
+                          style="background:#e5e7eb; color:#374151; padding:.15rem .45rem; border-radius:4px; font-size:.75rem;">Fill-in-blank</span>
+                </td>
                 <td>
                     <!-- Preview only available for FREE_FORM -->
                     <a th:if="${row.kind() == 'FREE_FORM'}"
@@ -117,6 +132,7 @@
     const kindSel     = document.getElementById('filterKind');
     const labelInput  = document.getElementById('filterLabel');
     const subjectInput = document.getElementById('filterSubject');
+    const modeSel      = document.getElementById('filterMode');
     const counter      = document.getElementById('templateCount');
     const noRows        = document.getElementById('noTemplates');
     const rows           = Array.from(document.querySelectorAll('#templateTable tbody tr'));
@@ -126,13 +142,15 @@
         const kind    = kindSel.value;
         const label   = labelInput.value.trim().toLowerCase();
         const subject = subjectInput.value.trim().toLowerCase();
-        const active  = !!(kind || label || subject);
+        const mode    = modeSel.value;
+        const active  = !!(kind || label || subject || mode);
 
         let shown = 0;
         rows.forEach(r => {
             const match = (!kind || r.dataset.kind === kind)
                 && (!label || (r.dataset.label || '').includes(label))
-                && (!subject || (r.dataset.subject || '').includes(subject));
+                && (!subject || (r.dataset.subject || '').includes(subject))
+                && (!mode || r.dataset.mode === mode);
             r.style.display = match ? '' : 'none';
             if (match) shown++;
         });
@@ -143,6 +161,7 @@
     kindSel.addEventListener('change', applyFilters);
     labelInput.addEventListener('input', applyFilters);
     subjectInput.addEventListener('input', applyFilters);
+    modeSel.addEventListener('change', applyFilters);
 })();
 </script>
 </body>

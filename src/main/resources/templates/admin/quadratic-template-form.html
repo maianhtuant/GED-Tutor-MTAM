@@ -96,6 +96,19 @@
                    placeholder="https://youtube.com/..."/>
         </div>
 
+        <div class="form-group">
+            <label for="answerMode">Answer mode</label>
+            <select id="answerMode" th:field="*{answerMode}">
+                <option value="FILL_IN_BLANK">Fill in the blank — student types the answer</option>
+                <option value="MULTIPLE_CHOICE">Multiple choice — student picks from auto-generated options</option>
+            </select>
+            <small class="text-muted">
+                Only applies to the "one repeated root" outcome (discriminant = 0) — 4 options are
+                generated automatically. Two-root and no-real-solution problems always stay
+                fill-in-the-blank since matching several values to one choice isn't meaningful.
+            </small>
+        </div>
+
         <div style="display:flex; gap:1rem;">
             <div class="form-group" style="flex:1">
                 <label for="tolerancePercent">Grading tolerance (%)</label>

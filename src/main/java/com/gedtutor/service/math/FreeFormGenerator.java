@@ -182,7 +182,8 @@ public class FreeFormGenerator implements MathProblemGenerator {
                 tol,
                 template.getVideoUrl(),
                 template.getDecimalPlaces(),
-                template.isRoundAnswer()
+                template.isRoundAnswer(),
+                List.of()
         );
     }
 

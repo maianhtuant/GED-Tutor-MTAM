@@ -63,6 +63,15 @@ public class MathProblemTemplate {
     @Column(nullable = false)
     private int decimalPlaces = 2;
 
+    /**
+     * Fill-in-the-blank (student types the answer) or multiple-choice
+     * (student picks from auto-generated options). See {@link AnswerMode}
+     * for which problem shapes actually support multiple-choice.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "answer_mode", nullable = false, length = 20)
+    private AnswerMode answerMode = AnswerMode.FILL_IN_BLANK;
+
     /** Optional URL of the lesson video. */
     @Column(length = 500)
     private String videoUrl;
@@ -105,6 +114,9 @@ public class MathProblemTemplate {
 
     public int getDecimalPlaces() { return decimalPlaces; }
     public void setDecimalPlaces(int decimalPlaces) { this.decimalPlaces = decimalPlaces; }
+
+    public AnswerMode getAnswerMode() { return answerMode; }
+    public void setAnswerMode(AnswerMode answerMode) { this.answerMode = answerMode; }
 
     public String getVideoUrl() { return videoUrl; }
     public void setVideoUrl(String videoUrl) { this.videoUrl = videoUrl; }

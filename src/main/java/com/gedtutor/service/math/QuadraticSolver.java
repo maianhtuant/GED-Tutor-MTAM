@@ -68,7 +68,7 @@ public class QuadraticSolver implements MathProblemGenerator {
             return new GeneratedMathProblem(
                     id, text, AnswerShape.SCALAR, List.of(),
                     "no real solution", NO_REAL_SOLUTION_ALIASES, tol, videoUrl,
-                    decimalPlaces, roundAnswer);
+                    decimalPlaces, roundAnswer, List.of());
         }
         if (discriminant == 0) {
             // Repeated root — but it's still a single answer.

@@ -23,6 +23,8 @@ import java.util.Set;
  * @param videoUrl        optional lesson-video URL
  * @param decimalPlaces   how many decimals to round displayed/graded answers to (default 2)
  * @param roundAnswer     whether a rounded decimal hint is shown alongside exact fractions
+ * @param choices         multiple-choice option strings (already display-formatted, shuffled,
+ *                         includes the correct one) — empty for fill-in-the-blank problems
  */
 public record GeneratedMathProblem(
         Long templateId,
@@ -34,7 +36,8 @@ public record GeneratedMathProblem(
         double tolerancePercent,
         String videoUrl,
         int decimalPlaces,
-        boolean roundAnswer
+        boolean roundAnswer,
+        List<String> choices
 ) implements Serializable {
 
     /** Default rounding used by generators that don't take an explicit template setting. */
@@ -51,7 +54,7 @@ public record GeneratedMathProblem(
                                               double tolerancePercent, String videoUrl,
                                               int decimalPlaces, boolean roundAnswer) {
         return new GeneratedMathProblem(templateId, text, AnswerShape.SCALAR,
-                List.of(answer), null, Set.of(), tolerancePercent, videoUrl, decimalPlaces, roundAnswer);
+                List.of(answer), null, Set.of(), tolerancePercent, videoUrl, decimalPlaces, roundAnswer, List.of());
     }
 
     /** Convenience: unordered roots (default rounding). */
@@ -65,21 +68,21 @@ public record GeneratedMathProblem(
                                                  double tolerancePercent, String videoUrl,
                                                  int decimalPlaces, boolean roundAnswer) {
         return new GeneratedMathProblem(templateId, text, AnswerShape.UNORDERED,
-                answers, null, Set.of(), tolerancePercent, videoUrl, decimalPlaces, roundAnswer);
+                answers, null, Set.of(), tolerancePercent, videoUrl, decimalPlaces, roundAnswer, List.of());
     }
 
     /** Convenience: ordered tuple (e.g. system of equations). */
     public static GeneratedMathProblem ordered(Long templateId, String text, List<Rational> answers,
                                                double tolerancePercent, String videoUrl) {
         return new GeneratedMathProblem(templateId, text, AnswerShape.ORDERED,
-                answers, null, Set.of(), tolerancePercent, videoUrl, DEFAULT_DECIMAL_PLACES, true);
+                answers, null, Set.of(), tolerancePercent, videoUrl, DEFAULT_DECIMAL_PLACES, true, List.of());
     }
 
     /** Convenience: special answer (no solution / undefined / infinite), default rounding. */
     public static GeneratedMathProblem special(Long templateId, String text, String special,
                                                Set<String> aliases, double tolerancePercent, String videoUrl) {
         return new GeneratedMathProblem(templateId, text, AnswerShape.SCALAR,
-                List.of(), special, aliases, tolerancePercent, videoUrl, DEFAULT_DECIMAL_PLACES, true);
+                List.of(), special, aliases, tolerancePercent, videoUrl, DEFAULT_DECIMAL_PLACES, true, List.of());
     }
 
     /** True when the canonical answer is a special non-numeric token. */
@@ -90,5 +93,16 @@ public record GeneratedMathProblem(
     /** Number of distinct numeric values the student must provide (0 for special). */
     public int expectedAnswerCount() {
         return hasSpecialAnswer() ? 0 : expectedAnswers.size();
+    }
+
+    /** True when this problem should be rendered as multiple-choice options. */
+    public boolean isMultipleChoice() {
+        return choices != null && !choices.isEmpty();
+    }
+
+    /** Return a copy of this problem with multiple-choice options attached. */
+    public GeneratedMathProblem withChoices(List<String> choices) {
+        return new GeneratedMathProblem(templateId, questionText, shape, expectedAnswers,
+                specialAnswer, specialAliases, tolerancePercent, videoUrl, decimalPlaces, roundAnswer, choices);
     }
 }

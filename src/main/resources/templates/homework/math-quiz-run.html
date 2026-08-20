@@ -29,6 +29,14 @@
     border:1px solid #ccc; border-radius:6px; font-size:1rem;
     box-sizing:border-box;
   }
+  .choice-group { display:flex; flex-direction:column; gap:0.5rem; margin-bottom:0.5rem; }
+  .choice-option {
+    display:flex; align-items:center; gap:0.6rem;
+    padding:0.55rem 0.85rem; border:1px solid #ddd; border-radius:6px;
+    cursor:pointer; font-size:1rem;
+  }
+  .choice-option:hover { background:#f8f9fa; }
+  .choice-option input[type=radio] { width:auto; margin:0; flex:0 0 auto; }
   .submit-btn { margin-top:0.5rem; }
   .feedback-box {
     margin-top:0.75rem; padding:0.75rem 1rem; border-radius:6px; display:none;
@@ -99,21 +107,30 @@
 
     <p class="question-text" th:attr="data-latex=${problem.questionText}">Solve for x: 2x + 3 = 7</p>
 
-    <p class="hint" th:if="${problem.shape.name() == 'SCALAR' and !problem.hasSpecialAnswer()}">
+    <p class="hint" th:if="${#lists.isEmpty(problem.choices) and problem.shape.name() == 'SCALAR' and !problem.hasSpecialAnswer()}">
       Type one number. Decimals or fractions both work: <code>2.5</code> or <code>5/2</code>.
     </p>
-    <p class="hint" th:if="${problem.shape.name() == 'UNORDERED'}">
+    <p class="hint" th:if="${#lists.isEmpty(problem.choices) and problem.shape.name() == 'UNORDERED'}">
       Two answers — comma-separated, any order. e.g. <code>2, -3</code>.
     </p>
-    <p class="hint" th:if="${problem.shape.name() == 'ORDERED'}">
+    <p class="hint" th:if="${#lists.isEmpty(problem.choices) and problem.shape.name() == 'ORDERED'}">
       Two values in order: x first, then y. e.g. <code>2, 3</code>.
     </p>
-    <p class="hint" th:if="${problem.hasSpecialAnswer()}">
+    <p class="hint" th:if="${#lists.isEmpty(problem.choices) and problem.hasSpecialAnswer()}">
       If the equation has no normal answer, type
       <code th:text="${problem.specialAnswer}">no real solution</code>.
     </p>
+    <p class="hint" th:unless="${#lists.isEmpty(problem.choices)}">Choose the best answer.</p>
 
-    <input type="text" class="answer-input"
+    <div th:unless="${#lists.isEmpty(problem.choices)}" class="choice-group">
+      <label class="choice-option" th:each="choice : ${problem.choices}">
+        <input type="radio" th:name="'choice-' + ${stat.index}"
+               th:attr="data-qidx=${stat.index}, data-token=${state.tokens[stat.index]}"
+               th:value="${choice}"/>
+        <span th:text="${choice}">Option</span>
+      </label>
+    </div>
+    <input th:if="${#lists.isEmpty(problem.choices)}" type="text" class="answer-input"
            th:id="'answer-' + ${stat.index}"
            th:attr="data-qidx=${stat.index}, data-token=${state.tokens[stat.index]}"
            placeholder="Your answer..." autocomplete="off"/>
@@ -227,10 +244,24 @@
   }
 
   function submitAnswer(qidx) {
+    // Either a free-text answer input, or a group of multiple-choice radios
+    // — whichever this question rendered.
     const input = document.getElementById('answer-' + qidx);
-    const token = input.getAttribute('data-token');
-    const value = input.value;
-    if (input.disabled) return;
+    const checkedRadio = document.querySelector('input[type="radio"][data-qidx="' + qidx + '"]:checked');
+    const anyRadio = document.querySelector('input[type="radio"][data-qidx="' + qidx + '"]');
+
+    let value, token, alreadyDisabled;
+    if (anyRadio) {
+      alreadyDisabled = anyRadio.disabled;
+      if (!checkedRadio) { alert('Pick an answer first.'); return; }
+      value = checkedRadio.value;
+      token = checkedRadio.getAttribute('data-token');
+    } else {
+      alreadyDisabled = input.disabled;
+      value = input.value;
+      token = input.getAttribute('data-token');
+    }
+    if (alreadyDisabled) return;
 
     const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
     if (csrfToken) headers[csrfHeader] = csrfToken;
@@ -245,7 +276,9 @@
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(data => {
       if (!data.ok) { alert(data.message || 'Could not grade.'); return; }
-      input.disabled = true;
+      if (input) input.disabled = true;
+      document.querySelectorAll('input[type="radio"][data-qidx="' + qidx + '"]')
+        .forEach(r => r.disabled = true);
       document.querySelector('.answer-submit[data-qidx="' + qidx + '"]').disabled = true;
       showFeedback(qidx, data.correct, data.expected);
       answered     = data.totalAsked   ?? (answered + 1);
